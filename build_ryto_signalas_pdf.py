@@ -7,12 +7,14 @@ import os
 import re
 import shutil
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from reportlab.lib import colors
@@ -40,6 +42,7 @@ ROOT = Path(__file__).resolve().parent
 COVER_IMAGE = ROOT / "rytinis-virselis.png"
 DEFAULT_OUTPUT_DIR = ROOT / "public"
 DEFAULT_TIMEZONE = "Europe/London"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
 
 PAGE_W, PAGE_H = A4
 MARGIN_X = 17 * mm
@@ -55,16 +58,15 @@ SOFT_BLUE = colors.HexColor("#E8EEF5")
 SOFT_GREEN = colors.HexColor("#E7F0EA")
 GOLD = colors.HexColor("#B7853B")
 
+USER_AGENT = "MorningMagazine/2.0 (+https://github.com/terasfly/morning-news)"
 
-TOPICS = [
+
+TOPICS: list[dict[str, Any]] = [
     {
-        "name": "Smegenys",
-        "tag": "Smegenu tyrimai",
-        "why": (
-            "Kodel tai svarbu: smegenu tyrimai letai keliasi is laboratoriniu atradimu i "
-            "diagnostika, terapijas, miego, atminties ir kasdienes sveikatos sprendimus. "
-            "Cia svarbiausia atsargus, saltiniais paremtas progresas."
-        ),
+        "name": "Brain Research",
+        "tag": "Brain research",
+        "description": "Neuroscience, cognition, memory, biomarkers, sleep, and brain health.",
+        "min_score": 36,
         "keywords": [
             "brain",
             "neuroscience",
@@ -93,12 +95,9 @@ TOPICS = [
     },
     {
         "name": "Longevity",
-        "tag": "Longevity ir healthspan",
-        "why": (
-            "Kodel tai svarbu: ilgaamziskumo temos lengvai virsta pazadais be pagrindo. "
-            "Vertingiausios istorijos kalba apie healthspan, prevencija, senejimo biologija "
-            "ir zmonems patikrinamus veiksmus."
-        ),
+        "tag": "Longevity",
+        "description": "Healthspan, aging biology, prevention, metabolism, exercise, and sleep.",
+        "min_score": 36,
         "keywords": [
             "longevity",
             "healthspan",
@@ -125,13 +124,10 @@ TOPICS = [
         ],
     },
     {
-        "name": "WHOOP",
-        "tag": "WHOOP ir wearables medicina",
-        "why": (
-            "Kodel tai svarbu: wearable irenginiai, tokie kaip WHOOP, juda link medicininiu "
-            "duomenu, klinikiniu tyrimu, HRV, miego, recovery ir kraujo tyrimu interpretacijos. "
-            "Cia svarbu atskirti tikra tyrima nuo marketingo."
-        ),
+        "name": "WHOOP & Wearables",
+        "tag": "WHOOP and wearables",
+        "description": "WHOOP, wearables, HRV, sleep tracking, bloodwork, and clinical studies.",
+        "min_score": 30,
         "keywords": [
             "whoop",
             "wearable",
@@ -163,13 +159,10 @@ TOPICS = [
         ],
     },
     {
-        "name": "AI",
-        "tag": "AI ir ChatGPT",
-        "why": (
-            "Kodel tai svarbu: AI ir ChatGPT atnaujinimai keicia darba, mokymasi, produktus "
-            "ir automatizacija. Verta sekti oficialius modeliu atnaujinimus ir realius produktu "
-            "pokycius, ne tik triuksma."
-        ),
+        "name": "AI & ChatGPT",
+        "tag": "AI and ChatGPT",
+        "description": "Official OpenAI updates, ChatGPT releases, agents, models, and AI product shifts.",
+        "min_score": 36,
         "keywords": [
             "ai",
             "artificial intelligence",
@@ -200,72 +193,201 @@ TOPICS = [
             ),
         ],
     },
+]
+
+
+BOOK_LIBRARY: list[dict[str, str]] = [
     {
-        "name": "Knygos",
-        "tag": "Knygos pabaigai",
-        "limit": 2,
-        "why": (
-            "Kodel tai svarbu: dienos pabaigoje verta tureti bent dvi knygas pagal tavo skoni - "
-            "epines keliones, laisve, isgyvenimas, stiprus charakteriai, wilderness ir "
-            "Shantaram tipo itraukiantis pasaulis."
-        ),
-        "keywords": [
-            "book",
-            "books",
-            "bestseller",
-            "best seller",
-            "new release",
-            "novel",
-            "nonfiction",
-            "memoir",
-            "literary fiction",
-            "adventure",
-            "travel",
-            "travel memoir",
-            "survival",
-            "wilderness",
-            "alaska",
-            "india",
-            "freedom",
-            "journey",
-            "escape",
-            "shantaram",
-            "author",
-            "prize",
-            "nyt bestseller",
-        ],
-        "preferred_keywords": [
-            "shantaram",
-            "alaska",
-            "wilderness",
-            "adventure",
-            "survival",
-            "travel memoir",
-            "journey",
-            "freedom",
-            "escape",
-            "epic",
-            "india",
-            "mountain",
-            "road",
-        ],
-        "feeds": [
-            ("NYT Books", "https://rss.nytimes.com/services/xml/rss/nyt/Books.xml"),
-            ("NPR Books", "https://feeds.npr.org/1032/rss.xml"),
-            ("Book Riot", "https://bookriot.com/feed/"),
-            (
-                "Google News Bestselling Books",
-                "https://news.google.com/rss/search?q=%28bestseller%20OR%20best-selling%20OR%20new%20book%20release%29%20%28book%20OR%20novel%20OR%20nonfiction%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
-            ),
-            (
-                "Google News Adventure Books",
-                "https://news.google.com/rss/search?q=%28adventure%20OR%20survival%20OR%20wilderness%20OR%20travel%20memoir%20OR%20literary%20fiction%29%20%28book%20OR%20novel%20OR%20memoir%20OR%20review%29%20when%3A30d&hl=en-US&gl=US&ceid=US%3Aen",
-            ),
-            (
-                "Google News Shantaram Alaska Taste",
-                "https://news.google.com/rss/search?q=%28Shantaram%20OR%20Alaska%20OR%20wilderness%20OR%20journey%20OR%20freedom%29%20%28book%20OR%20novel%20OR%20memoir%20OR%20bestseller%20OR%20review%29%20when%3A30d&hl=en-US&gl=US&ceid=US%3Aen",
-            ),
-        ],
+        "title": "The Snow Child",
+        "author": "Eowyn Ivey",
+        "summary_en": "This is an atmospheric Alaska novel about loneliness, wilderness, wonder, and the fragile bonds that keep people alive through hard winters. It matches your taste because the landscape feels like a character, and the emotional journey is quiet but powerful.",
+        "summary_lt": "Tai atmosferiškas romanas apie Aliaską, vienatvę, laukinę gamtą, stebuklo jausmą ir trapius ryšius, kurie padeda žmonėms išgyventi sunkias žiemas. Jis tinka tavo skoniui, nes gamta čia jaučiasi kaip atskiras veikėjas, o emocinė kelionė tyli, bet stipri.",
+    },
+    {
+        "title": "Lonesome Dove",
+        "author": "Larry McMurtry",
+        "summary_en": "A big, immersive journey across harsh country, built around friendship, endurance, loyalty, and loss. If you liked the vast human world of Shantaram, this gives a similar feeling of living inside a long road story with unforgettable characters.",
+        "summary_lt": "Tai plati, įtraukianti kelionė per atšiaurų kraštą, paremta draugyste, ištverme, lojalumu ir netektimi. Jei tau patiko didelis žmogiškas Shantaram pasaulis, ši knyga duoda panašų jausmą, lyg gyventum ilgoje kelionės istorijoje su nepamirštamais veikėjais.",
+    },
+    {
+        "title": "A Fine Balance",
+        "author": "Rohinton Mistry",
+        "summary_en": "This is a deeply human, sweeping novel about people trying to keep dignity and connection under extreme pressure. It has the emotional density and social atmosphere that can appeal to someone who loved Shantaram's human chaos and moral struggle.",
+        "summary_lt": "Tai labai žmogiškas, platus romanas apie žmones, bandančius išlaikyti orumą ir ryšį patirdami didžiulį spaudimą. Jame yra emocinio tankio ir socialinės atmosferos, kuri gali patikti žmogui, mėgusiam Shantaram žmogišką chaosą ir moralinę kovą.",
+    },
+    {
+        "title": "The River",
+        "author": "Peter Heller",
+        "summary_en": "Two friends paddle through remote wilderness as danger closes in, making this a lean survival story with emotional weight. It fits because it combines nature, tension, loyalty, and the question of what people owe each other under pressure.",
+        "summary_lt": "Du draugai keliauja upe per atokią laukinę gamtą, o pavojus vis artėja, todėl tai glausta, įtempta išgyvenimo istorija su emociniu svoriu. Ji tinka, nes jungia gamtą, įtampą, lojalumą ir klausimą, ką žmonės vieni kitiems skolingi spaudimo akimirkomis.",
+    },
+    {
+        "title": "Where the Crawdads Sing",
+        "author": "Delia Owens",
+        "summary_en": "A lonely child grows into herself inside a wild coastal landscape, with nature, survival, love, and suspicion all tied together. It matches the emotional wilderness side of The Great Alone more than the urban sweep of Shantaram.",
+        "summary_lt": "Vienišas vaikas auga laukiniame pakrantės kraštovaizdyje, kur susipina gamta, išgyvenimas, meilė ir įtarimas. Ji labiau atitinka emocinę The Great Alone laukinės gamtos pusę nei miesto mastą, būdingą Shantaram.",
+    },
+    {
+        "title": "Papillon",
+        "author": "Henri Charriere",
+        "summary_en": "A classic escape and survival story driven by freedom, risk, and stubborn life force. It echoes the fugitive energy of Shantaram, with a stronger emphasis on endurance and the hunger to stay free.",
+        "summary_lt": "Tai klasikinė pabėgimo ir išgyvenimo istorija apie laisvę, riziką ir užsispyrusią gyvenimo jėgą. Ji primena Shantaram bėglio energiją, tik dar labiau pabrėžia ištvermę ir alkį išlikti laisvam.",
+    },
+    {
+        "title": "The Four Winds",
+        "author": "Kristin Hannah",
+        "summary_en": "This is another emotional survival story from Kristin Hannah, centered on family, hardship, migration, and endurance. It is a natural match if what stayed with you from The Great Alone was resilience under brutal conditions.",
+        "summary_lt": "Tai dar viena Kristin Hannah emocinė išgyvenimo istorija apie šeimą, sunkumus, migraciją ir ištvermę. Ji natūraliai tinka, jei iš The Great Alone labiausiai įstrigo atsparumas žiauriomis sąlygomis.",
+    },
+    {
+        "title": "Cutting for Stone",
+        "author": "Abraham Verghese",
+        "summary_en": "A rich, emotional novel about family, medicine, exile, and belonging across continents. It has the immersive life-story quality that makes Shantaram feel like a whole world rather than only a plot.",
+        "summary_lt": "Tai turtingas, emocingas romanas apie šeimą, mediciną, tremtį ir priklausymo jausmą keliuose žemynuose. Jis turi įtraukiančią gyvenimo istorijos kokybę, dėl kurios Shantaram atrodo kaip visas pasaulis, o ne tik siužetas.",
+    },
+    {
+        "title": "The Poisonwood Bible",
+        "author": "Barbara Kingsolver",
+        "summary_en": "A family is pulled into a beautiful, dangerous place where belief, survival, and relationships are tested. It fits your taste through its powerful setting, moral complexity, and long emotional consequences.",
+        "summary_lt": "Šeima atsiduria gražioje, pavojingoje vietoje, kur išbandomi įsitikinimai, išgyvenimas ir santykiai. Ji tinka tavo skoniui dėl stiprios aplinkos, moralinio sudėtingumo ir ilgų emocinių pasekmių.",
+    },
+    {
+        "title": "Welcome to the Goddamn Ice Cube",
+        "author": "Blair Braverman",
+        "summary_en": "This memoir moves through Alaska, Norway, sled dogs, cold, fear, and self-reliance. It is a strong match for the raw wilderness and survival atmosphere you liked in The Great Alone.",
+        "summary_lt": "Šie memuarai veda per Aliaską, Norvegiją, kinkinius šunis, šaltį, baimę ir savarankiškumą. Tai stiprus pasirinkimas, jei tau patiko The Great Alone laukinės gamtos ir išgyvenimo atmosfera.",
+    },
+    {
+        "title": "The Salt Path",
+        "author": "Raynor Winn",
+        "summary_en": "A couple loses almost everything and walks the wild coast of England, turning hardship into a physical and emotional journey. It matches your interest in survival, love under pressure, and healing through landscape.",
+        "summary_lt": "Pora beveik viską praranda ir leidžiasi pėsčiomis laukine Anglijos pakrante, paversdama sunkumus fizine ir emocine kelione. Ji tinka tavo domėjimuisi išgyvenimu, meile spaudimo sąlygomis ir gijimu per kraštovaizdį.",
+    },
+    {
+        "title": "Damnation Spring",
+        "author": "Ash Davidson",
+        "summary_en": "A family and a logging community face loyalty, damage, and survival in a landscape that gives and takes away. It fits the Great Alone side of your taste: nature, family pressure, hard choices, and emotional cost.",
+        "summary_lt": "Šeima ir medkirčių bendruomenė susiduria su lojalumu, žala ir išgyvenimu kraštovaizdyje, kuris ir duoda, ir atima. Ji tinka The Great Alone tavo skonio pusei: gamta, šeimos spaudimas, sunkūs pasirinkimai ir emocinė kaina.",
+    },
+    {
+        "title": "The Far Pavilions",
+        "author": "M. M. Kaye",
+        "summary_en": "A sweeping historical adventure set across India, full of identity, danger, loyalty, and romance. It may appeal if the Indian atmosphere and large-scale journey were part of what made Shantaram memorable for you.",
+        "summary_lt": "Tai platus istorinis nuotykis Indijoje, kupinas tapatybės, pavojaus, lojalumo ir romantikos. Jis gali patikti, jei Shantaram tau įsiminė dėl Indijos atmosferos ir didelės kelionės pojūčio.",
+    },
+    {
+        "title": "Wild",
+        "author": "Cheryl Strayed",
+        "summary_en": "A grief-struck woman walks the Pacific Crest Trail and turns physical hardship into a reckoning with her life. It fits your interest in emotional journeys, nature, survival, and rebuilding the self.",
+        "summary_lt": "Gedinti moteris eina Pacific Crest Trail keliu ir fizinį sunkumą paverčia akistata su savo gyvenimu. Ji tinka tavo pomėgiui emocinėms kelionėms, gamtai, išgyvenimui ir savęs atkūrimui.",
+    },
+    {
+        "title": "Tracks",
+        "author": "Robyn Davidson",
+        "summary_en": "A woman crosses the Australian desert with camels, making this a spare, powerful story of solitude, danger, and inner toughness. It belongs beside wilderness survival books, but with a more meditative atmosphere.",
+        "summary_lt": "Moteris su kupranugariais kerta Australijos dykumą, todėl tai santūri, stipri istorija apie vienatvę, pavojų ir vidinį kietumą. Ji dera prie laukinės gamtos išgyvenimo knygų, tik jos atmosfera meditatyvesnė.",
+    },
+    {
+        "title": "The Covenant of Water",
+        "author": "Abraham Verghese",
+        "summary_en": "A multi-generational family novel set in Kerala, filled with medicine, faith, secrets, and emotional inheritance. It matches the immersive, whole-life storytelling you may enjoy from Shantaram and Cutting for Stone.",
+        "summary_lt": "Tai kelių kartų šeimos romanas Keraloje, kupinas medicinos, tikėjimo, paslapčių ir emocinio paveldėjimo. Jis atitinka įtraukiantį, viso gyvenimo pasakojimą, kuris gali patikti po Shantaram ar Cutting for Stone.",
+    },
+    {
+        "title": "Shogun",
+        "author": "James Clavell",
+        "summary_en": "A huge historical adventure about survival, power, culture shock, loyalty, and reinvention in an unfamiliar world. It fits the Shantaram side of your taste because it is long, immersive, and full of human strategy.",
+        "summary_lt": "Tai didelis istorinis nuotykis apie išgyvenimą, valdžią, kultūrinį šoką, lojalumą ir persikūrimą svetimame pasaulyje. Jis tinka Shantaram tavo skonio pusei, nes yra ilgas, įtraukiantis ir pilnas žmogiškos strategijos.",
+    },
+    {
+        "title": "The Beach",
+        "author": "Alex Garland",
+        "summary_en": "A search for paradise turns into a tense story about escape, belonging, danger, and the dark side of adventure. It connects to Shantaram through travel, outsider energy, and a seductive but unstable world.",
+        "summary_lt": "Rojaus paieškos virsta įtempta istorija apie pabėgimą, priklausymą, pavojų ir tamsiąją nuotykio pusę. Ji siejasi su Shantaram per kelionę, pašaliečio energiją ir viliojantį, bet nestabilų pasaulį.",
+    },
+    {
+        "title": "The Overstory",
+        "author": "Richard Powers",
+        "summary_en": "This novel makes trees, activism, grief, and human connection feel vast and alive. It is slower than Shantaram, but it can match your love for stories where nature changes the emotional scale of everything.",
+        "summary_lt": "Šis romanas medžius, aktyvizmą, gedulą ir žmonių ryšius paverčia dideliais ir gyvais. Jis lėtesnis nei Shantaram, bet gali atitikti tavo meilę istorijoms, kuriose gamta pakeičia viso pasakojimo emocinį mastelį.",
+    },
+    {
+        "title": "Marching Powder",
+        "author": "Rusty Young",
+        "summary_en": "A strange, intense true story set inside Bolivia's San Pedro prison, full of danger, friendship, survival, and moral gray zones. It is a strong Shantaram-adjacent pick because it reads like an unbelievable life lived outside normal rules.",
+        "summary_lt": "Tai keista, intensyvi tikra istorija Bolivijos San Pedro kalėjime, pilna pavojaus, draugystės, išgyvenimo ir moralinių pilkųjų zonų. Ji labai artima Shantaram nuotaikai, nes skaitosi kaip neįtikėtinas gyvenimas už įprastų taisyklių ribų.",
+    },
+    {
+        "title": "The Call of the Wild",
+        "author": "Jack London",
+        "summary_en": "A short, fierce classic about instinct, wilderness, and transformation under brutal northern conditions. It is a compact way to revisit the raw survival atmosphere that makes Alaska stories powerful.",
+        "summary_lt": "Tai trumpa, stipri klasika apie instinktą, laukinę gamtą ir virsmą žiauriomis šiaurės sąlygomis. Tai glaustas būdas grįžti prie neapdorotos išgyvenimo atmosferos, dėl kurios Aliaskos istorijos tokios paveikios.",
+    },
+    {
+        "title": "The Great Railway Bazaar",
+        "author": "Paul Theroux",
+        "summary_en": "A restless travel classic built from trains, strangers, discomfort, and curiosity across Asia. It matches the journey side of Shantaram, especially if you enjoy being carried through many human worlds.",
+        "summary_lt": "Tai neramus kelionių klasikos kūrinys apie traukinius, nepažįstamuosius, diskomfortą ir smalsumą Azijoje. Jis atitinka Shantaram kelionės pusę, ypač jei tau patinka būti vedamam per daugybę žmogiškų pasaulių.",
+    },
+    {
+        "title": "The Old Ways",
+        "author": "Robert Macfarlane",
+        "summary_en": "A meditative book about walking, old paths, landscape, memory, and the way places shape people. It is less plot-driven, but very strong if you want nature, emotional depth, and a sense of journey.",
+        "summary_lt": "Tai meditatyvi knyga apie ėjimą, senus kelius, kraštovaizdį, atmintį ir tai, kaip vietos formuoja žmones. Ji mažiau siužetinė, bet labai stipri, jei nori gamtos, emocinio gylio ir kelionės jausmo.",
+    },
+    {
+        "title": "This Tender Land",
+        "author": "William Kent Krueger",
+        "summary_en": "A river journey, found family, danger, and hope carry this story through Depression-era America. It fits because it blends adventure with emotional bonds and the feeling of people trying to find a place in the world.",
+        "summary_lt": "Upės kelionė, pasirinkta šeima, pavojus ir viltis neša šią istoriją per Didžiosios depresijos laikų Ameriką. Ji tinka, nes jungia nuotykį su emociniais ryšiais ir žmonių bandymu rasti savo vietą pasaulyje.",
+    },
+    {
+        "title": "The Light Between Oceans",
+        "author": "M. L. Stedman",
+        "summary_en": "A remote lighthouse, isolation, love, grief, and one impossible choice make this a strong emotional landscape novel. It fits the human-relationship side of your taste more than the adventure side.",
+        "summary_lt": "Atokus švyturys, izoliacija, meilė, gedulas ir vienas neįmanomas pasirinkimas paverčia šią knygą stipriu emocinio kraštovaizdžio romanu. Ji labiau tinka tavo žmogiškų santykių, o ne nuotykio pusei.",
+    },
+    {
+        "title": "News of the World",
+        "author": "Paulette Jiles",
+        "summary_en": "A spare, moving road story about an older man and a young girl crossing dangerous country together. It matches your interest in harsh landscapes, trust built slowly, and emotional journeys.",
+        "summary_lt": "Tai santūri, jaudinanti kelio istorija apie vyresnį vyrą ir jauną mergaitę, kartu keliaujančius per pavojingą kraštą. Ji atitinka tavo pomėgį atšiauriems kraštovaizdžiams, lėtai kuriamam pasitikėjimui ir emocinėms kelionėms.",
+    },
+    {
+        "title": "The North Water",
+        "author": "Ian McGuire",
+        "summary_en": "A dark, brutal Arctic survival novel full of violence, cold, moral danger, and endurance. It is much harsher than The Great Alone, but it delivers the raw wilderness pressure very strongly.",
+        "summary_lt": "Tai tamsus, žiaurus Arkties išgyvenimo romanas, pilnas smurto, šalčio, moralinio pavojaus ir ištvermės. Jis daug šiurkštesnis nei The Great Alone, bet labai stipriai perteikia laukinės gamtos spaudimą.",
+    },
+    {
+        "title": "The Signature of All Things",
+        "author": "Elizabeth Gilbert",
+        "summary_en": "A broad, intelligent life story about science, travel, desire, and the natural world. It fits if you want a slower but immersive emotional journey where curiosity and nature shape a whole life.",
+        "summary_lt": "Tai plati, protinga gyvenimo istorija apie mokslą, keliones, troškimą ir gamtos pasaulį. Ji tinka, jei nori lėtesnės, bet įtraukiančios emocinės kelionės, kur smalsumas ir gamta formuoja visą gyvenimą.",
+    },
+    {
+        "title": "State of Wonder",
+        "author": "Ann Patchett",
+        "summary_en": "A doctor travels deep into the Amazon, where science, danger, ethics, and human attachment collide. It matches your interest in immersive places, moral uncertainty, and emotionally charged journeys.",
+        "summary_lt": "Gydytoja keliauja giliai į Amazoniją, kur susiduria mokslas, pavojus, etika ir žmogiškas prisirišimas. Ji tinka tavo domėjimuisi įtraukiančiomis vietomis, moraliniu neapibrėžtumu ir emocingomis kelionėmis.",
+    },
+    {
+        "title": "The Mosquito Coast",
+        "author": "Paul Theroux",
+        "summary_en": "A family follows a brilliant, obsessive father into the jungle, where idealism becomes danger. It fits the survival and relationship-pressure side of The Great Alone, but in a very different landscape.",
+        "summary_lt": "Šeima seka genialų, apsėstą tėvą į džiungles, kur idealizmas virsta pavojumi. Ji tinka The Great Alone išgyvenimo ir santykių spaudimo pusei, tik visiškai kitame kraštovaizdyje.",
+    },
+    {
+        "title": "The Sheltering Sky",
+        "author": "Paul Bowles",
+        "summary_en": "A hypnotic desert novel about travel, alienation, love, and psychological unraveling. It is less comforting, but it offers the kind of intense atmosphere and outsider journey that can appeal after Shantaram.",
+        "summary_lt": "Tai hipnotizuojantis dykumos romanas apie kelionę, svetimumą, meilę ir psichologinį irimą. Jis mažiau guodžiantis, bet turi tokią intensyvią atmosferą ir pašaliečio kelionę, kuri gali patikti po Shantaram.",
+    },
+    {
+        "title": "The Orchardist",
+        "author": "Amanda Coplin",
+        "summary_en": "A quiet, beautifully written novel about solitude, violence, care, and damaged people finding fragile shelter in a remote landscape. It matches the emotional wilderness and human tenderness you may like.",
+        "summary_lt": "Tai tylus, gražiai parašytas romanas apie vienatvę, smurtą, rūpestį ir sužeistus žmones, randančius trapų prieglobstį atokiame kraštovaizdyje. Jis atitinka emocinę laukinę gamtą ir žmogišką švelnumą, kuris tau gali patikti.",
     },
 ]
 
@@ -276,21 +398,50 @@ class Article:
     tag: str
     title: str
     summary: str
+    summary_en: str
+    summary_lt: str
     url: str
     source: str
     published: str
     score: int
+    read_status: str
+    word_count: int
+
+
+@dataclass
+class BookRecommendation:
+    title: str
+    author: str
+    summary_en: str
+    summary_lt: str
+    search_url: str
 
 
 def clean_text(value: str | None) -> str:
     if not value:
         return ""
-    value = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", value)
+    value = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\1>", " ", value)
     value = re.sub(r"(?is)<br\s*/?>", " ", value)
-    value = re.sub(r"(?is)</p\s*>", " ", value)
+    value = re.sub(r"(?is)</p\s*>", ". ", value)
     value = re.sub(r"(?is)<.*?>", " ", value)
     value = html.unescape(value)
     value = re.sub(r"\s+", " ", value).strip()
+    return repair_mojibake(value)
+
+
+def repair_mojibake(value: str) -> str:
+    replacements = {
+        "â€™": "'",
+        "â€˜": "'",
+        "â€œ": '"',
+        "â€": '"',
+        "â€“": "-",
+        "â€”": "-",
+        "â€¦": "...",
+        "Â·": "-",
+    }
+    for bad, good in replacements.items():
+        value = value.replace(bad, good)
     return value
 
 
@@ -299,12 +450,11 @@ def sanitize_xml(data: bytes) -> str:
     return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", " ", text)
 
 
-def truncate_sentence(text: str, limit: int = 360) -> str:
-    text = clean_text(text)
-    if len(text) <= limit:
-        return text
-    cut = text[:limit].rsplit(" ", 1)[0].rstrip(",.;:")
-    return f"{cut}..."
+def truncate_words(text: str, limit: int = 900) -> str:
+    words = clean_text(text).split()
+    if len(words) <= limit:
+        return " ".join(words)
+    return " ".join(words[:limit])
 
 
 def local_name(tag: str) -> str:
@@ -345,19 +495,19 @@ def parse_datetime(value: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def fetch_feed(url: str) -> bytes:
+def fetch_url(url: str, timeout: int = 25) -> bytes:
     request = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "RytoSignalas/1.0 (+https://github.com/)",
-            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/rss+xml,application/atom+xml,application/xml,text/xml;q=0.9,*/*;q=0.8",
         },
     )
-    with urllib.request.urlopen(request, timeout=25) as response:
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read()
 
 
-def parse_feed(data: bytes, fallback_source: str, topic: dict) -> list[Article]:
+def parse_feed(data: bytes, fallback_source: str, topic: dict[str, Any]) -> list[Article]:
     root = ET.fromstring(sanitize_xml(data))
     entries: list[Article] = []
     topic_text = " ".join(topic["keywords"]).lower()
@@ -385,7 +535,7 @@ def parse_feed(data: bytes, fallback_source: str, topic: dict) -> list[Article]:
 
 
 def make_article(
-    topic: dict,
+    topic: dict[str, Any],
     title: str,
     summary: str,
     url: str,
@@ -397,29 +547,31 @@ def make_article(
     combined = f"{title} {summary}".lower()
     keyword_hits = sum(1 for keyword in topic["keywords"] if keyword.lower() in combined)
     title_hits = sum(1 for keyword in topic["keywords"] if keyword.lower() in title.lower())
-    preferred_keywords = topic.get("preferred_keywords", [])
-    preferred_hits = sum(1 for keyword in preferred_keywords if keyword.lower() in combined)
-    preferred_title_hits = sum(1 for keyword in preferred_keywords if keyword.lower() in title.lower())
     recency = 0
     if published_dt:
         age_hours = max(0, (datetime.now(timezone.utc) - published_dt).total_seconds() / 3600)
         recency = max(0, int(24 - (age_hours / 3)))
-    summary_bonus = 26 if summary_is_useful(title, summary) else 0
-    score = keyword_hits * 6 + title_hits * 4 + preferred_hits * 14 + preferred_title_hits * 8 + summary_bonus + recency
+    summary_bonus = 24 if summary_is_useful(title, summary) else 0
+    score = keyword_hits * 6 + title_hits * 4 + summary_bonus + recency
     if "google news" in feed_source.lower():
-        score -= 22
+        score -= 20
     if topic["name"].lower() in topic_text:
         score += 1
     published = published_dt.isoformat() if published_dt else ""
+    clean_summary = clean_text(summary)
     return Article(
         topic=topic["name"],
         tag=topic["tag"],
         title=clean_text(title),
-        summary=truncate_sentence(summary) or "Trumpa šaltinio santrauka nepateikta. Atidaryk nuorodą detalesniam kontekstui.",
+        summary=clean_summary,
+        summary_en=clean_summary,
+        summary_lt="",
         url=url.strip(),
-        source=clean_text(source) or "RSS šaltinis",
+        source=clean_text(source) or "RSS source",
         published=published,
         score=score,
+        read_status="rss",
+        word_count=len(clean_summary.split()),
     )
 
 
@@ -432,67 +584,343 @@ def summary_is_useful(title: str, summary: str) -> bool:
     return len(summary_tokens - title_tokens) >= 8
 
 
+def extract_article_text(url: str) -> tuple[str, str]:
+    try:
+        data = fetch_url(url, timeout=18)
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        return "", "rss"
+
+    page_html = data.decode("utf-8", errors="replace")
+
+    try:
+        import trafilatura  # type: ignore
+
+        extracted = trafilatura.extract(
+            page_html,
+            url=url,
+            include_comments=False,
+            include_tables=False,
+            favor_recall=True,
+        )
+        if extracted and len(extracted.split()) >= 80:
+            return clean_text(extracted), "article"
+    except Exception:
+        pass
+
+    paragraphs = re.findall(r"(?is)<p[^>]*>(.*?)</p>", page_html)
+    text = clean_text(" ".join(paragraphs))
+    if len(text.split()) >= 80:
+        return text, "article"
+    return "", "rss"
+
+
+def split_sentences(text: str) -> list[str]:
+    text = clean_text(text)
+    raw = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"'])", text)
+    sentences = []
+    for sentence in raw:
+        sentence = re.sub(r"^(summary|abstract|source|credit)\s*:\s*", "", sentence.strip(), flags=re.I)
+        words = sentence.split()
+        lowered = sentence.lower()
+        bad_markers = (
+            "doi:",
+            "abstract dendritic",
+            "copyright",
+            "all rights reserved",
+            "subscribe",
+            "advertisement",
+            "sign up",
+            "image:",
+            "credit:",
+            "newsletter",
+            "cookie",
+            "privacy policy",
+        )
+        if 8 <= len(words) <= 42 and not any(marker in lowered for marker in bad_markers):
+            sentences.append(sentence)
+    return sentences
+
+
+STOPWORDS = {
+    "about",
+    "after",
+    "also",
+    "because",
+    "been",
+    "being",
+    "could",
+    "from",
+    "have",
+    "into",
+    "more",
+    "over",
+    "said",
+    "that",
+    "their",
+    "there",
+    "these",
+    "they",
+    "this",
+    "with",
+    "would",
+    "will",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+}
+
+
+def token_set(text: str) -> set[str]:
+    return {token for token in re.findall(r"[a-zA-Z][a-zA-Z0-9-]{3,}", text.lower()) if token not in STOPWORDS}
+
+
+def extractive_summary(title: str, source_summary: str, article_text: str, topic: dict[str, Any]) -> str:
+    material = article_text if len(article_text.split()) >= 120 else source_summary
+    sentences = split_sentences(material)
+    if not sentences:
+        fallback = clean_text(source_summary) or f"{title} was selected as a relevant update in {topic['name']}."
+        return normalize_sentence_count(fallback, 3)
+
+    title_tokens = token_set(title)
+    topic_tokens = {keyword.lower() for keyword in topic["keywords"]}
+    scored: list[tuple[int, int, str]] = []
+    for idx, sentence in enumerate(sentences[:32]):
+        tokens = token_set(sentence)
+        score = len(tokens & title_tokens) * 4 + sum(1 for keyword in topic_tokens if keyword in sentence.lower()) * 3
+        if any(marker in sentence.lower() for marker in ("study", "research", "announced", "found", "released", "trial", "data", "model", "patients")):
+            score += 4
+        if idx < 5:
+            score += 5 - idx
+        scored.append((score, idx, sentence))
+
+    picked = sorted(sorted(scored, reverse=True)[:4], key=lambda item: item[1])
+    summary = " ".join(sentence for _, _, sentence in picked)
+    return normalize_sentence_count(summary, 3)
+
+
+def normalize_sentence_count(text: str, target: int = 3) -> str:
+    sentences = split_sentences(text)
+    if len(sentences) >= target:
+        return " ".join(sentences[: min(4, len(sentences))])
+    clean = clean_text(text)
+    if not clean:
+        return ""
+    if clean[-1] not in ".!?":
+        clean += "."
+    return clean
+
+
+def translate_to_lithuanian(text: str) -> str:
+    text = clean_text(text)
+    if not text:
+        return ""
+    try:
+        from deep_translator import GoogleTranslator  # type: ignore
+
+        translated = GoogleTranslator(source="en", target="lt").translate(text[:4500])
+        return clean_text(translated)
+    except Exception:
+        return f"Vertimas laikinai nepavyko. Angliška santrauka: {text}"
+
+
+def extract_openai_text(payload: dict[str, Any]) -> str:
+    if isinstance(payload.get("output_text"), str):
+        return payload["output_text"]
+    parts: list[str] = []
+
+    def walk(value: Any) -> None:
+        if isinstance(value, dict):
+            text = value.get("text")
+            if isinstance(text, str):
+                parts.append(text)
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(payload.get("output"))
+    return "\n".join(parts).strip()
+
+
+def call_openai_json(prompt: str, max_output_tokens: int = 900) -> dict[str, Any] | None:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+
+    body = {
+        "model": OPENAI_MODEL,
+        "input": prompt,
+        "max_output_tokens": max_output_tokens,
+    }
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=45) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return None
+
+    text = extract_openai_text(payload)
+    if not text:
+        return None
+    match = re.search(r"\{.*\}", text, flags=re.S)
+    if match:
+        text = match.group(0)
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def ai_summarize_article(article: Article, article_text: str, topic: dict[str, Any]) -> tuple[str, str] | None:
+    prompt = f"""
+You are editing a personal daily Morning Magazine.
+
+Task:
+- Read the article material below.
+- Write a concise English summary in 3-4 sentences.
+- Include only the most important facts: what happened, why it matters, and key updates.
+- Do not add facts not supported by the material.
+- Then translate the summary completely into Lithuanian.
+- Return only valid JSON with keys "summary_en" and "summary_lt".
+
+Section: {topic["name"]}
+Title: {article.title}
+Source: {article.source}
+RSS summary: {article.summary}
+
+Article material:
+{truncate_words(article_text or article.summary, 950)}
+""".strip()
+    parsed = call_openai_json(prompt, max_output_tokens=900)
+    if not parsed:
+        return None
+    summary_en = clean_text(str(parsed.get("summary_en", "")))
+    summary_lt = clean_text(str(parsed.get("summary_lt", "")))
+    if len(split_sentences(summary_en)) < 2 or not summary_lt:
+        return None
+    return summary_en, summary_lt
+
+
+def enrich_article(article: Article, topic: dict[str, Any]) -> Article:
+    article_text, read_status = extract_article_text(article.url)
+    word_count = len(article_text.split()) if article_text else len(article.summary.split())
+
+    ai_summary = ai_summarize_article(article, article_text, topic)
+    if ai_summary:
+        summary_en, summary_lt = ai_summary
+        read_status = f"{read_status}+ai"
+    else:
+        summary_en = extractive_summary(article.title, article.summary, article_text, topic)
+        summary_lt = translate_to_lithuanian(summary_en)
+
+    article.summary_en = summary_en
+    article.summary_lt = summary_lt
+    article.summary = summary_en
+    article.read_status = read_status
+    article.word_count = word_count
+    if read_status.startswith("article"):
+        article.score += 8
+    return article
+
+
+def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
+    if article.score < int(topic.get("min_score", 30)):
+        return False
+    summary_words = len(article.summary_en.split())
+    if summary_words < 35:
+        return False
+    if article.source.lower().startswith("google news") and article.word_count < 80:
+        return False
+    return True
+
+
 def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
     selected: list[Article] = []
     errors: list[str] = []
     seen: set[str] = set()
 
     for topic in TOPICS:
-        topic_limit = max(1, int(topic.get("limit", per_topic)))
         candidates: list[Article] = []
         for source, url in topic["feeds"]:
             try:
-                feed = fetch_feed(url)
+                feed = fetch_url(url)
                 candidates.extend(parse_feed(feed, source, topic))
-            except (urllib.error.URLError, TimeoutError, ET.ParseError, ValueError) as exc:
+            except (urllib.error.URLError, TimeoutError, ET.ParseError, ValueError, OSError) as exc:
                 errors.append(f"{source}: {exc}")
 
         ranked = sorted(candidates, key=lambda article: (article.score, article.published), reverse=True)
         picked = 0
+        checked = 0
         for article in ranked:
             identity = article.url.split("?", 1)[0].rstrip("/") or article.title.lower()
             title_key = re.sub(r"\W+", "", article.title.lower())[:80]
             if identity in seen or title_key in seen:
                 continue
+            checked += 1
+            enriched = enrich_article(article, topic)
+            if not is_meaningful(enriched, topic):
+                if checked >= 10:
+                    break
+                continue
             seen.add(identity)
             seen.add(title_key)
-            selected.append(article)
+            selected.append(enriched)
             picked += 1
-            if picked >= topic_limit:
+            if picked >= per_topic:
+                break
+            if checked >= 10:
                 break
 
     return selected, errors
+
+
+def select_book_recommendations(run_date: date, count: int = 3) -> list[BookRecommendation]:
+    count = max(1, min(3, count))
+    start = (run_date.toordinal() * count) % len(BOOK_LIBRARY)
+    picks = [BOOK_LIBRARY[(start + offset) % len(BOOK_LIBRARY)] for offset in range(count)]
+    recommendations = []
+    for book in picks:
+        query = urllib.parse.quote_plus(f"{book['title']} {book['author']} book")
+        recommendations.append(
+            BookRecommendation(
+                title=book["title"],
+                author=book["author"],
+                summary_en=book["summary_en"],
+                summary_lt=book["summary_lt"],
+                search_url=f"https://www.google.com/search?q={query}",
+            )
+        )
+    return recommendations
 
 
 def html_escape(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def format_date_lt(run_date: date) -> str:
-    months = {
-        1: "sausio",
-        2: "vasario",
-        3: "kovo",
-        4: "balandžio",
-        5: "gegužės",
-        6: "birželio",
-        7: "liepos",
-        8: "rugpjūčio",
-        9: "rugsėjo",
-        10: "spalio",
-        11: "lapkričio",
-        12: "gruodžio",
-    }
-    return f"{run_date.year} m. {months[run_date.month]} {run_date.day} d."
+def format_date_en(run_date: date) -> str:
+    return run_date.strftime("%B %-d, %Y") if os.name != "nt" else run_date.strftime("%B %#d, %Y")
 
 
 def iso_to_local(value: str, timezone_name: str) -> str:
     if not value:
-        return "data nenurodyta"
+        return "date unavailable"
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
-        return "data nenurodyta"
+        return "date unavailable"
     local_dt = parsed.astimezone(ZoneInfo(timezone_name))
     return local_dt.strftime("%Y-%m-%d %H:%M")
 
@@ -506,21 +934,37 @@ def prepare_output_dir(output_dir: Path) -> Path:
     return assets
 
 
-def render_html(output_dir: Path, articles: list[Article], run_date: date, timezone_name: str, pdf_name: str, errors: list[str]) -> None:
+def render_html(
+    output_dir: Path,
+    articles: list[Article],
+    books: list[BookRecommendation],
+    run_date: date,
+    timezone_name: str,
+    pdf_name: str,
+    errors: list[str],
+) -> None:
     assets_rel = f"assets/{COVER_IMAGE.name}" if COVER_IMAGE.exists() else ""
     cards = []
+    current_topic = ""
     for idx, article in enumerate(articles, 1):
+        topic_heading = ""
+        if article.topic != current_topic:
+            current_topic = article.topic
+            topic_heading = f"<h2 class=\"section-title\">{html_escape(current_topic)}</h2>"
         cards.append(
             f"""
+            {topic_heading}
             <article class="story">
               <div class="story-meta">
                 <span>{idx:02d}</span>
-                <span>{html_escape(article.tag)}</span>
+                <span>{html_escape(article.source)}</span>
+                <span>{html_escape(iso_to_local(article.published, timezone_name))}</span>
               </div>
-              <h2>{html_escape(article.title)}</h2>
-              <p>{html_escape(article.summary)}</p>
-              <div class="why">{html_escape(next(topic["why"] for topic in TOPICS if topic["name"] == article.topic))}</div>
-              <a href="{html_escape(article.url)}" target="_blank" rel="noreferrer">Šaltinis: {html_escape(article.source)} · {html_escape(iso_to_local(article.published, timezone_name))}</a>
+              <h3>{html_escape(article.title)}</h3>
+              <p>{html_escape(article.summary_en)}</p>
+              <h4>Lietuviškai</h4>
+              <p>{html_escape(article.summary_lt)}</p>
+              <a href="{html_escape(article.url)}" target="_blank" rel="noreferrer">Read source</a>
             </article>
             """
         )
@@ -529,30 +973,45 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
         cards.append(
             """
             <article class="story">
-              <div class="story-meta"><span>!</span><span>Šaltiniai</span></div>
-              <h2>Šį rytą nepavyko surinkti RSS naujienų</h2>
-              <p>Patikrink GitHub Actions žurnalą. Dažniausia priežastis: laikinas RSS šaltinio arba tinklo sutrikimas.</p>
+              <div class="story-meta"><span>!</span><span>Sources</span></div>
+              <h3>No high-quality updates today</h3>
+              <p>The magazine skipped the news sections because the available feeds did not contain meaningful updates.</p>
+            </article>
+            """
+        )
+
+    book_cards = []
+    for book in books:
+        book_cards.append(
+            f"""
+            <article class="story book-story">
+              <div class="story-meta"><span>Book Recommendation</span><span>{html_escape(book.author)}</span></div>
+              <h3>{html_escape(book.title)}</h3>
+              <p>{html_escape(book.summary_en)}</p>
+              <h4>Lietuviškai</h4>
+              <p>{html_escape(book.summary_lt)}</p>
+              <a href="{html_escape(book.search_url)}" target="_blank" rel="noreferrer">Search book</a>
             </article>
             """
         )
 
     error_note = ""
     if errors:
-        error_items = "".join(f"<li>{html_escape(error)}</li>" for error in errors[:6])
+        error_items = "".join(f"<li>{html_escape(error)}</li>" for error in errors[:8])
         error_note = f"""
         <details class="source-health">
-          <summary>Šaltinių būsena</summary>
+          <summary>Source health</summary>
           <ul>{error_items}</ul>
         </details>
         """
 
     cover_style = f"background-image: linear-gradient(90deg, rgba(20,33,61,.92), rgba(20,33,61,.52)), url('{assets_rel}');" if assets_rel else ""
     html_doc = f"""<!doctype html>
-<html lang="lt">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ryto signalas · {html_escape(str(run_date))}</title>
+  <title>Morning Magazine - {html_escape(str(run_date))}</title>
   <style>
     :root {{
       color-scheme: light;
@@ -572,10 +1031,10 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
       font-family: Arial, Helvetica, sans-serif;
       background: var(--paper);
       color: var(--text);
-      line-height: 1.55;
+      line-height: 1.58;
     }}
     .hero {{
-      min-height: 64vh;
+      min-height: 62vh;
       display: flex;
       align-items: flex-end;
       background-color: var(--ink);
@@ -593,13 +1052,12 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
       margin: 0 0 10px;
       font-size: 0.78rem;
       font-weight: 700;
-      letter-spacing: 0;
       color: #f4c46c;
       text-transform: uppercase;
     }}
     h1 {{
       margin: 0;
-      font-size: clamp(2.5rem, 7vw, 5.6rem);
+      font-size: clamp(2.5rem, 7vw, 5.8rem);
       line-height: 0.95;
       letter-spacing: 0;
     }}
@@ -621,7 +1079,7 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
     main {{
       width: min(980px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 26px 0 42px;
+      padding: 28px 0 42px;
     }}
     .intro {{
       display: grid;
@@ -644,12 +1102,18 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
     }}
     .stat b {{ display: block; color: var(--ink); font-size: 1.3rem; }}
     .stat span {{ color: var(--muted); font-size: .84rem; }}
+    .section-title {{
+      margin: 30px 0 6px;
+      color: var(--ink);
+      font-size: 1.65rem;
+    }}
     .story {{
       padding: 22px 0;
       border-bottom: 1px solid var(--line);
     }}
     .story-meta {{
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       align-items: center;
       color: var(--gold);
@@ -657,27 +1121,32 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
       font-size: .78rem;
       text-transform: uppercase;
     }}
-    .story h2 {{
+    .story h3 {{
       margin: 8px 0 8px;
       color: var(--ink);
-      font-size: clamp(1.45rem, 3vw, 2.2rem);
-      line-height: 1.08;
-      letter-spacing: 0;
+      font-size: clamp(1.35rem, 3vw, 2rem);
+      line-height: 1.12;
     }}
-    .story p {{ max-width: 760px; margin: 0 0 12px; }}
-    .why {{
-      max-width: 760px;
-      margin: 12px 0;
-      padding: 12px 14px;
-      background: var(--green);
-      border: 1px solid #c6d8cb;
-      color: #1f3a5f;
-      font-size: .95rem;
+    .story h4 {{
+      margin: 16px 0 4px;
+      color: #31446c;
+      font-size: 0.92rem;
     }}
+    .story p {{ max-width: 790px; margin: 0 0 12px; }}
     .story a {{
       color: #1f4d78;
       font-weight: 700;
       text-decoration: none;
+    }}
+    .book-section {{
+      margin-top: 32px;
+      padding-top: 18px;
+      border-top: 2px solid var(--ink);
+    }}
+    .book-story {{
+      background: rgba(255,255,255,.28);
+      padding-left: 12px;
+      padding-right: 12px;
     }}
     .source-health {{
       margin-top: 24px;
@@ -704,26 +1173,30 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
 <body>
   <section class="hero">
     <div class="hero-inner">
-      <p class="kicker">Automatinis rytinis numeris</p>
-      <h1>RYTO SIGNALAS</h1>
-      <p class="deck">Smegenys, longevity, WHOOP, AI ir dvi knygos pabaigai · {html_escape(format_date_lt(run_date))}</p>
-      <a class="download" href="{html_escape(pdf_name)}">Atsisiųsti PDF</a>
+      <p class="kicker">Personal daily edition</p>
+      <h1>MORNING MAGAZINE</h1>
+      <p class="deck">Brain research, longevity, WHOOP, AI, ChatGPT and immersive book recommendations - {html_escape(format_date_en(run_date))}</p>
+      <a class="download" href="{html_escape(pdf_name)}">Download PDF</a>
     </div>
   </section>
   <main>
     <section class="intro">
-      <p>Šis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam rytiniam signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, AI bei ChatGPT temose. Gale visada paliekami bent du knygų signalai pagal tavo skonį.</p>
+      <p>This edition reads selected source articles, keeps only meaningful updates, and gives each item an English summary followed by the full Lithuanian translation.</p>
       <div class="stats">
-        <div class="stat"><b>{len(articles)}</b><span>atrinktos istorijos</span></div>
-        <div class="stat"><b>{len(TOPICS)}</b><span>temos</span></div>
+        <div class="stat"><b>{len(articles)}</b><span>news articles</span></div>
+        <div class="stat"><b>{len(books)}</b><span>book picks</span></div>
         <div class="stat"><b>06:00</b><span>{html_escape(timezone_name)}</span></div>
       </div>
     </section>
     {''.join(cards)}
+    <section class="book-section">
+      <h2 class="section-title">Book Recommendation</h2>
+      {''.join(book_cards)}
+    </section>
     {error_note}
   </main>
   <footer>
-    Redaktoriaus pastaba: automatinė versija remiasi šaltinių pateiktais pavadinimais ir santraukomis. Prieš svarbius sprendimus visada skaityk pilną šaltinį.
+    Editor's note: the magazine is generated automatically from source material. For medical or financial decisions, read the original source and consult a qualified professional.
   </footer>
 </body>
 </html>
@@ -757,10 +1230,10 @@ def register_fonts() -> tuple[str, str, str]:
     if not regular or not bold or not italic:
         return "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
 
-    pdfmetrics.registerFont(TTFont("RytoSans", regular))
-    pdfmetrics.registerFont(TTFont("RytoSans-Bold", bold))
-    pdfmetrics.registerFont(TTFont("RytoSans-Italic", italic))
-    return "RytoSans", "RytoSans-Bold", "RytoSans-Italic"
+    pdfmetrics.registerFont(TTFont("MorningSans", regular))
+    pdfmetrics.registerFont(TTFont("MorningSans-Bold", bold))
+    pdfmetrics.registerFont(TTFont("MorningSans-Italic", italic))
+    return "MorningSans", "MorningSans-Bold", "MorningSans-Italic"
 
 
 def draw_page(canvas, doc):
@@ -773,139 +1246,26 @@ def draw_page(canvas, doc):
     canvas.line(MARGIN_X, 10 * mm, PAGE_W - MARGIN_X, 10 * mm)
     canvas.setFont(getattr(doc, "body_font", "Helvetica"), 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(MARGIN_X, 6.4 * mm, "Ryto signalas | Smegenys, longevity, WHOOP, AI, knygos")
-    canvas.drawRightString(PAGE_W - MARGIN_X, 6.4 * mm, f"Puslapis {doc.page}")
+    canvas.drawString(MARGIN_X, 6.4 * mm, "Morning Magazine | English + Lietuviškai")
+    canvas.drawRightString(PAGE_W - MARGIN_X, 6.4 * mm, f"Page {doc.page}")
     canvas.restoreState()
 
 
 def make_styles(fonts: tuple[str, str, str]):
     regular, bold, italic = fonts
     styles = getSampleStyleSheet()
-    styles.add(
-        ParagraphStyle(
-            "Masthead",
-            parent=styles["Normal"],
-            fontName=bold,
-            fontSize=34,
-            leading=36,
-            textColor=INK,
-            alignment=TA_CENTER,
-            spaceAfter=3,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Kicker",
-            parent=styles["Normal"],
-            fontName=bold,
-            fontSize=8.5,
-            leading=10,
-            textColor=GOLD,
-            alignment=TA_CENTER,
-            spaceAfter=5,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Deck",
-            parent=styles["Normal"],
-            fontName=italic,
-            fontSize=11.5,
-            leading=15,
-            textColor=MUTED,
-            alignment=TA_CENTER,
-            spaceAfter=11,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Lead",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=11.2,
-            leading=16,
-            textColor=INK,
-            alignment=TA_JUSTIFY,
-            spaceAfter=10,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "SectionLabel",
-            parent=styles["Normal"],
-            fontName=bold,
-            fontSize=8,
-            leading=9.5,
-            textColor=GOLD,
-            spaceAfter=2,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Headline",
-            parent=styles["Normal"],
-            fontName=bold,
-            fontSize=16,
-            leading=19,
-            textColor=INK,
-            spaceAfter=5,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Body",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=10.2,
-            leading=14.4,
-            textColor=colors.HexColor("#20242A"),
-            alignment=TA_JUSTIFY,
-            spaceAfter=7,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Why",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=9.6,
-            leading=12.6,
-            textColor=colors.HexColor("#1F3A5F"),
-            alignment=TA_LEFT,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Source",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=8.4,
-            leading=11,
-            textColor=MUTED,
-            spaceAfter=2,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "Small",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=8.3,
-            leading=10.5,
-            textColor=MUTED,
-            alignment=TA_CENTER,
-        )
-    )
-    styles.add(
-        ParagraphStyle(
-            "IndexItem",
-            parent=styles["Normal"],
-            fontName=regular,
-            fontSize=9.4,
-            leading=12.4,
-            textColor=INK,
-        )
-    )
+    styles.add(ParagraphStyle("Masthead", parent=styles["Normal"], fontName=bold, fontSize=32, leading=35, textColor=INK, alignment=TA_CENTER, spaceAfter=3))
+    styles.add(ParagraphStyle("Kicker", parent=styles["Normal"], fontName=bold, fontSize=8.5, leading=10, textColor=GOLD, alignment=TA_CENTER, spaceAfter=5))
+    styles.add(ParagraphStyle("Deck", parent=styles["Normal"], fontName=italic, fontSize=11.3, leading=15, textColor=MUTED, alignment=TA_CENTER, spaceAfter=11))
+    styles.add(ParagraphStyle("Lead", parent=styles["Normal"], fontName=regular, fontSize=10.8, leading=15.6, textColor=INK, alignment=TA_JUSTIFY, spaceAfter=10))
+    styles.add(ParagraphStyle("SectionLabel", parent=styles["Normal"], fontName=bold, fontSize=8, leading=9.5, textColor=GOLD, spaceAfter=2))
+    styles.add(ParagraphStyle("SectionTitle", parent=styles["Normal"], fontName=bold, fontSize=18, leading=21, textColor=INK, spaceAfter=7))
+    styles.add(ParagraphStyle("Headline", parent=styles["Normal"], fontName=bold, fontSize=15.5, leading=18.5, textColor=INK, spaceAfter=5))
+    styles.add(ParagraphStyle("Body", parent=styles["Normal"], fontName=regular, fontSize=9.8, leading=13.8, textColor=colors.HexColor("#20242A"), alignment=TA_JUSTIFY, spaceAfter=7))
+    styles.add(ParagraphStyle("Lithuanian", parent=styles["Normal"], fontName=regular, fontSize=9.4, leading=13.4, textColor=colors.HexColor("#2E3C5E"), alignment=TA_JUSTIFY, spaceAfter=7))
+    styles.add(ParagraphStyle("Source", parent=styles["Normal"], fontName=regular, fontSize=8.3, leading=10.6, textColor=MUTED, spaceAfter=2))
+    styles.add(ParagraphStyle("Small", parent=styles["Normal"], fontName=regular, fontSize=8.2, leading=10.4, textColor=MUTED, alignment=TA_CENTER))
+    styles.add(ParagraphStyle("IndexItem", parent=styles["Normal"], fontName=regular, fontSize=9.2, leading=12.2, textColor=INK))
     return styles
 
 
@@ -915,28 +1275,11 @@ def source_link(label: str, url: str) -> str:
 
 def article_block(article: Article, timezone_name: str, styles):
     source = source_link(f"{article.source}, {iso_to_local(article.published, timezone_name)}", article.url)
-    why = next(topic["why"] for topic in TOPICS if topic["name"] == article.topic)
-    why_table = Table(
-        [[Paragraph(f"<b>Kodėl tai svarbu:</b> {html_escape(why.split(':', 1)[1].strip())}", styles["Why"])]],
-        colWidths=[CONTENT_W],
-    )
-    why_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), SOFT_GREEN),
-                ("BOX", (0, 0), (-1, -1), 0.35, colors.HexColor("#C6D8CB")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 10),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-            ]
-        )
-    )
     return KeepTogether(
         [
             Spacer(1, 8),
             Table(
-                [[Paragraph(html_escape(article.tag).upper(), styles["SectionLabel"])]],
+                [[Paragraph(html_escape(article.topic).upper(), styles["SectionLabel"])]],
                 colWidths=[CONTENT_W],
                 style=[
                     ("LINEABOVE", (0, 0), (-1, 0), 0.8, RULE),
@@ -945,15 +1288,36 @@ def article_block(article: Article, timezone_name: str, styles):
                 ],
             ),
             Paragraph(html_escape(article.title), styles["Headline"]),
-            Paragraph(html_escape(article.summary), styles["Body"]),
-            why_table,
-            Spacer(1, 5),
-            Paragraph(f"Šaltinis: {source}", styles["Source"]),
+            Paragraph(html_escape(article.summary_en), styles["Body"]),
+            Paragraph("<b>Lietuviškai</b>", styles["Source"]),
+            Paragraph(html_escape(article.summary_lt), styles["Lithuanian"]),
+            Paragraph(f"Source: {source}", styles["Source"]),
         ]
     )
 
 
-def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezone_name: str, pdf_name: str) -> None:
+def book_block(book: BookRecommendation, styles):
+    return KeepTogether(
+        [
+            Spacer(1, 8),
+            Table(
+                [[Paragraph("BOOK RECOMMENDATION", styles["SectionLabel"])]],
+                colWidths=[CONTENT_W],
+                style=[
+                    ("LINEABOVE", (0, 0), (-1, 0), 0.8, RULE),
+                    ("TOPPADDING", (0, 0), (-1, 0), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
+                ],
+            ),
+            Paragraph(html_escape(f"{book.title} - {book.author}"), styles["Headline"]),
+            Paragraph(html_escape(book.summary_en), styles["Body"]),
+            Paragraph("<b>Lietuviškai</b>", styles["Source"]),
+            Paragraph(html_escape(book.summary_lt), styles["Lithuanian"]),
+        ]
+    )
+
+
+def build_pdf(output_dir: Path, articles: list[Article], books: list[BookRecommendation], run_date: date, timezone_name: str, pdf_name: str) -> None:
     fonts = register_fonts()
     styles = make_styles(fonts)
 
@@ -965,8 +1329,8 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
         rightMargin=MARGIN_X,
         topMargin=MARGIN_TOP,
         bottomMargin=MARGIN_BOTTOM,
-        title=f"Ryto signalas - {run_date.isoformat()}",
-        author="Ryto signalas",
+        title=f"Morning Magazine - {run_date.isoformat()}",
+        author="Morning Magazine",
     )
     doc.body_font = fonts[0]
     frame = Frame(
@@ -980,33 +1344,21 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
     doc.addPageTemplates([PageTemplate(id="all", frames=[frame], onPage=draw_page)])
 
     story = []
-    story.append(Paragraph("AUTOMATINIS NUMERIS", styles["Kicker"]))
-    story.append(Paragraph("RYTO SIGNALAS", styles["Masthead"]))
-    story.append(
-        Paragraph(
-            f"Smegenys, longevity, WHOOP, AI ir dvi knygos pabaigai | {html_escape(format_date_lt(run_date))}",
-            styles["Deck"],
-        )
-    )
+    story.append(Paragraph("PERSONAL DAILY EDITION", styles["Kicker"]))
+    story.append(Paragraph("MORNING MAGAZINE", styles["Masthead"]))
+    story.append(Paragraph(f"English summaries with Lietuviškai translations | {html_escape(format_date_en(run_date))}", styles["Deck"]))
 
     if COVER_IMAGE.exists():
         img = Image(str(COVER_IMAGE), width=CONTENT_W, height=CONTENT_W * 0.50)
         img.hAlign = "CENTER"
         story.append(img)
         story.append(Spacer(1, 3))
-        story.append(
-            Paragraph(
-                "Viršelio iliustracija temai: smegenys, AI, sveiko gyvenimo trukmė ir rytinis dėmesys.",
-                styles["Small"],
-            )
-        )
+        story.append(Paragraph("AI, brain research, healthspan and a morning reading ritual.", styles["Small"]))
         story.append(Spacer(1, 12))
 
     story.append(
         Paragraph(
-            "Šis rytinis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam "
-            "signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, "
-            "AI bei ChatGPT temose. Gale visada paliekami bent du knygu signalai pagal tavo skoni.",
+            "This magazine reads selected source articles, skips weak updates, and gives each item a short English summary followed by a complete Lithuanian translation.",
             styles["Lead"],
         )
     )
@@ -1017,7 +1369,7 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
             index_rows.append(
                 [
                     Paragraph(f"<b>{idx}</b>", styles["IndexItem"]),
-                    Paragraph(html_escape(article.title), styles["IndexItem"]),
+                    Paragraph(html_escape(f"{article.topic}: {article.title}"), styles["IndexItem"]),
                 ]
             )
         index = Table(index_rows, colWidths=[12 * mm, CONTENT_W - 12 * mm])
@@ -1041,18 +1393,17 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
         for article in articles:
             story.append(article_block(article, timezone_name, styles))
     else:
-        story.append(
-            Paragraph(
-                "Šį rytą nepavyko surinkti RSS naujienų. Patikrink GitHub Actions žurnalą.",
-                styles["Body"],
-            )
-        )
+        story.append(Paragraph("No high-quality news updates were selected today.", styles["Body"]))
+
+    story.append(PageBreak())
+    story.append(Paragraph("Book Recommendation", styles["SectionTitle"]))
+    for book in books:
+        story.append(book_block(book, styles))
 
     story.append(Spacer(1, 10))
     story.append(
         Paragraph(
-            "<b>Redaktoriaus pastaba.</b> Automatinė versija remiasi šaltinių pateiktais "
-            "pavadinimais ir santraukomis. Prieš svarbius sprendimus visada skaityk pilną šaltinį.",
+            "<b>Editor's note.</b> This is an automated magazine generated from source material. Read the original source before making important medical, financial or professional decisions.",
             styles["Body"],
         )
     )
@@ -1060,22 +1411,34 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
     doc.build(story)
 
 
-def write_data(output_dir: Path, articles: list[Article], errors: list[str], run_date: date, timezone_name: str) -> None:
+def write_data(
+    output_dir: Path,
+    articles: list[Article],
+    books: list[BookRecommendation],
+    errors: list[str],
+    run_date: date,
+    timezone_name: str,
+) -> None:
     payload = {
+        "title": "Morning Magazine",
         "generated_for": run_date.isoformat(),
         "timezone": timezone_name,
+        "language": "en-lt",
+        "summary_engine": "openai" if os.getenv("OPENAI_API_KEY") else "extractive-fallback",
         "articles": [asdict(article) for article in articles],
+        "book_recommendations": [asdict(book) for book in books],
         "feed_errors": errors,
     }
     (output_dir / "ryto-signalas.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate the Ryto signalas morning newspaper.")
+    parser = argparse.ArgumentParser(description="Generate the personal Morning Magazine.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for the generated website and PDF.")
     parser.add_argument("--timezone", default=os.getenv("NEWS_TIMEZONE", DEFAULT_TIMEZONE), help="IANA timezone for dates.")
     parser.add_argument("--date", help="Publication date in YYYY-MM-DD format. Defaults to today in the selected timezone.")
-    parser.add_argument("--per-topic", type=int, default=2, help="Number of stories to select per topic.")
+    parser.add_argument("--per-topic", type=int, default=2, help="Maximum number of news stories to select per topic.")
+    parser.add_argument("--book-count", type=int, default=3, help="Number of book recommendations, from 1 to 3.")
     return parser.parse_args()
 
 
@@ -1088,11 +1451,12 @@ def main() -> None:
 
     prepare_output_dir(output_dir)
     articles, errors = collect_articles(per_topic=max(1, args.per_topic))
-    pdf_name = f"ryto-signalas-{run_date.isoformat()}.pdf"
-    render_html(output_dir, articles, run_date, timezone_name, pdf_name, errors)
-    build_pdf(output_dir, articles, run_date, timezone_name, pdf_name)
+    books = select_book_recommendations(run_date, count=args.book_count)
+    pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
+    render_html(output_dir, articles, books, run_date, timezone_name, pdf_name, errors)
+    build_pdf(output_dir, articles, books, run_date, timezone_name, pdf_name)
     shutil.copy2(output_dir / pdf_name, output_dir / "latest.pdf")
-    write_data(output_dir, articles, errors, run_date, timezone_name)
+    write_data(output_dir, articles, books, errors, run_date, timezone_name)
 
     print(f"Generated {output_dir / 'index.html'}")
     print(f"Generated {output_dir / pdf_name}")

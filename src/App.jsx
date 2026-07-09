@@ -25,120 +25,120 @@ import {
 import coverImage from "../rytinis-virselis.png";
 
 const FALLBACK_DIGEST = {
+  title: "Morning Magazine",
   generated_for: new Date().toISOString().slice(0, 10),
   timezone: "Europe/London",
+  language: "en-lt",
+  summary_engine: "demo",
   articles: [
     {
-      topic: "Smegenys",
-      tag: "Smegenu tyrimai",
-      title: "Smegenu sveikatos tyrimai vis dazniau jungia vaizdus, krauja ir elgsena",
+      topic: "Brain Research",
+      tag: "Brain research",
+      title: "Brain health research is moving toward earlier, more practical signals",
+      summary_en:
+        "Researchers are increasingly combining imaging, biomarkers, sleep data and cognitive testing to detect changes earlier. The important shift is that brain health is being studied as a measurable system rather than a single late-stage diagnosis. This matters because earlier signals may eventually help people act before symptoms become severe.",
+      summary_lt:
+        "Mokslininkai vis dažniau jungia vaizdinimo tyrimus, biomarkerius, miego duomenis ir kognityvinius testus, kad pokyčius pastebėtų anksčiau. Svarbiausias pokytis yra tai, kad smegenų sveikata vis dažniau tiriama kaip matuojama sistema, o ne tik kaip vėlyva diagnozė. Tai svarbu, nes ankstesni signalai ateityje gali padėti žmonėms imtis veiksmų dar prieš simptomams tampant sunkiais.",
       summary:
-        "Tyrimu kryptis juda link pigesniu ankstyvo signalo metodu: biomarkeriai, skaitmeniniai testai ir ilgalaikiai gyvenimo budo duomenys vertinami kartu.",
-      url: "https://news.google.com/search?q=brain%20science%20health",
-      source: "Demo saltinis",
+        "Researchers are increasingly combining imaging, biomarkers, sleep data and cognitive testing to detect changes earlier. The important shift is that brain health is being studied as a measurable system rather than a single late-stage diagnosis. This matters because earlier signals may eventually help people act before symptoms become severe.",
+      url: "https://news.google.com/search?q=brain%20research%20biomarker",
+      source: "Demo source",
       published: new Date().toISOString(),
-      score: 84
+      score: 84,
+      read_status: "demo",
+      word_count: 120
     },
     {
       topic: "Longevity",
-      tag: "Longevity ir healthspan",
-      title: "Healthspan tema tampa praktiskesne: miegas, raumenys, metabolizmas",
+      tag: "Longevity",
+      title: "Longevity coverage is becoming more focused on healthspan than hype",
+      summary_en:
+        "The strongest longevity updates now tend to focus on muscle, sleep, metabolism, inflammation and prevention rather than miracle claims. That makes the field more useful for everyday decisions because the best signals are measurable and repeatable. The key is to separate real human evidence from marketing.",
+      summary_lt:
+        "Stipriausios ilgaamžiškumo naujienos dabar dažniau kalba apie raumenis, miegą, metabolizmą, uždegimą ir prevenciją, o ne apie stebuklingus pažadus. Dėl to ši sritis tampa naudingesnė kasdieniams sprendimams, nes geriausi signalai yra matuojami ir pakartojami. Svarbiausia atskirti tikrus žmonių duomenis nuo marketingo.",
       summary:
-        "Ilgaamziskumo diskusija vis maziau sukasi apie vien papildus ir vis daugiau apie ismatuojamus iprocius, rizikos veiksnius bei personalizuota prevencija.",
-      url: "https://news.google.com/search?q=longevity%20healthspan",
-      source: "Demo saltinis",
+        "The strongest longevity updates now tend to focus on muscle, sleep, metabolism, inflammation and prevention rather than miracle claims. That makes the field more useful for everyday decisions because the best signals are measurable and repeatable. The key is to separate real human evidence from marketing.",
+      url: "https://news.google.com/search?q=longevity%20healthspan%20research",
+      source: "Demo source",
       published: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      score: 77
+      score: 78,
+      read_status: "demo",
+      word_count: 115
     },
     {
-      topic: "WHOOP",
-      tag: "WHOOP ir wearables medicina",
-      title: "Wearables signalai vertinami kartu su miego, HRV ir medicininiais tyrimais",
+      topic: "WHOOP & Wearables",
+      tag: "WHOOP and wearables",
+      title: "Wearables are moving closer to medical interpretation",
+      summary_en:
+        "WHOOP and other wearables are increasingly discussed alongside sleep, HRV, recovery, remote monitoring and clinical data. The useful updates are not just product features, but whether the measurements are reliable enough to support better decisions. This matters because consumer health devices are slowly moving toward the edge of medicine.",
+      summary_lt:
+        "WHOOP ir kiti dėvimi įrenginiai vis dažniau aptariami kartu su miegu, HRV, atsistatymu, nuotoliniu stebėjimu ir klinikiniais duomenimis. Vertingi atnaujinimai yra ne tik produkto funkcijos, bet ir klausimas, ar matavimai pakankamai patikimi geresniems sprendimams. Tai svarbu, nes vartotojų sveikatos įrenginiai pamažu artėja prie medicinos ribos.",
       summary:
-        "WHOOP ir kiti irenginiai vis dazniau aptariami ne kaip zingsniu skaitikliai, o kaip nuolatinio matavimo sluoksnis salia klinikiniu tyrimu ir sveikatos sprendimu.",
+        "WHOOP and other wearables are increasingly discussed alongside sleep, HRV, recovery, remote monitoring and clinical data. The useful updates are not just product features, but whether the measurements are reliable enough to support better decisions. This matters because consumer health devices are slowly moving toward the edge of medicine.",
       url: "https://news.google.com/search?q=WHOOP%20wearable%20medical%20study",
-      source: "Demo saltinis",
+      source: "Demo source",
       published: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      score: 70
+      score: 72,
+      read_status: "demo",
+      word_count: 110
     },
     {
-      topic: "AI",
-      tag: "AI ir ChatGPT",
-      title: "AI ir ChatGPT atnaujinimai keliasi i kasdienius darbo srautus",
+      topic: "AI & ChatGPT",
+      tag: "AI and ChatGPT",
+      title: "AI and ChatGPT updates are becoming workflow updates",
+      summary_en:
+        "The most important AI news is shifting from model announcements alone to how tools change everyday work. ChatGPT, agents and automation matter when they help people research, write, code, plan or operate faster. The useful signal is whether a release changes a real workflow, not whether it creates a loud headline.",
+      summary_lt:
+        "Svarbiausios AI naujienos vis labiau juda nuo vien modelių pristatymų prie to, kaip įrankiai keičia kasdienį darbą. ChatGPT, agentai ir automatizacija svarbūs tada, kai padeda žmonėms greičiau tirti, rašyti, programuoti, planuoti ar veikti. Vertingas signalas yra tai, ar atnaujinimas pakeičia tikrą darbo eigą, o ne tai, ar sukuria garsų pavadinimą.",
       summary:
-        "Nauji agentiniai irankiai jau ne tik atsako i klausimus, bet ir planuoja veiksmus, seka saltinius, rengia santraukas bei padeda mazoms komandoms automatizuoti pasikartojanti darba.",
+        "The most important AI news is shifting from model announcements alone to how tools change everyday work. ChatGPT, agents and automation matter when they help people research, write, code, plan or operate faster. The useful signal is whether a release changes a real workflow, not whether it creates a loud headline.",
       url: "https://news.google.com/search?q=ChatGPT%20OpenAI%20updates",
-      source: "Demo saltinis",
+      source: "Demo source",
       published: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-      score: 68
+      score: 70,
+      read_status: "demo",
+      word_count: 112
+    }
+  ],
+  book_recommendations: [
+    {
+      title: "The Snow Child",
+      author: "Eowyn Ivey",
+      summary_en:
+        "This is an atmospheric Alaska novel about loneliness, wilderness, wonder, and the fragile bonds that keep people alive through hard winters. It matches your taste because the landscape feels like a character, and the emotional journey is quiet but powerful.",
+      summary_lt:
+        "Tai atmosferiškas romanas apie Aliaską, vienatvę, laukinę gamtą, stebuklo jausmą ir trapius ryšius, kurie padeda žmonėms išgyventi sunkias žiemas. Jis tinka tavo skoniui, nes gamta čia jaučiasi kaip atskiras veikėjas, o emocinė kelionė tyli, bet stipri.",
+      search_url: "https://www.google.com/search?q=The+Snow+Child+Eowyn+Ivey+book"
     },
     {
-      topic: "Knygos",
-      tag: "Knygos pabaigai",
-      title: "Populiari nauja knyga rytiniam skaitymo radarui",
-      summary:
-        "Rytinio leidimo pabaigoje visada paliekami bent du kulturos signalai: naujos, aptariamos arba bestselleriuose kylancios knygos.",
-      url: "https://news.google.com/search?q=bestseller%20new%20book%20release",
-      source: "Demo saltinis",
-      published: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
-      score: 52
-    },
-    {
-      topic: "Knygos",
-      tag: "Knygos pabaigai",
-      title: "Knyga pagal tavo skoni: kelione, laisve ir isgyvenimas",
-      summary:
-        "Papildomas knygu signalas labiau iesko Shantaram ir Aliaskos nuotaikos: epines keliones, stiprus charakteriai, wilderness, laisve ir nuotykis.",
-      url: "https://news.google.com/search?q=adventure%20survival%20wilderness%20travel%20memoir%20book",
-      source: "Demo saltinis",
-      published: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-      score: 50
+      title: "Lonesome Dove",
+      author: "Larry McMurtry",
+      summary_en:
+        "A big, immersive journey across harsh country, built around friendship, endurance, loyalty, and loss. If you liked the vast human world of Shantaram, this gives a similar feeling of living inside a long road story with unforgettable characters.",
+      summary_lt:
+        "Tai plati, įtraukianti kelionė per atšiaurų kraštą, paremta draugyste, ištverme, lojalumu ir netektimi. Jei tau patiko didelis žmogiškas Shantaram pasaulis, ši knyga duoda panašų jausmą, lyg gyventum ilgoje kelionės istorijoje su nepamirštamais veikėjais.",
+      search_url: "https://www.google.com/search?q=Lonesome+Dove+Larry+McMurtry+book"
     }
   ],
   feed_errors: []
 };
 
 const TOPICS = [
-  {
-    id: "all",
-    label: "Visos",
-    Icon: Sparkles
-  },
-  {
-    id: "Smegenys",
-    label: "Smegenys",
-    Icon: Brain
-  },
-  {
-    id: "Longevity",
-    label: "Longevity",
-    Icon: HeartPulse
-  },
-  {
-    id: "WHOOP",
-    label: "WHOOP",
-    Icon: Watch
-  },
-  {
-    id: "AI",
-    label: "AI",
-    Icon: Cpu
-  },
-  {
-    id: "Knygos",
-    label: "Knygos",
-    Icon: BookOpen
-  }
+  { id: "all", label: "All", Icon: Sparkles },
+  { id: "Brain Research", label: "Brain", Icon: Brain },
+  { id: "Longevity", label: "Longevity", Icon: HeartPulse },
+  { id: "WHOOP & Wearables", label: "WHOOP", Icon: Watch },
+  { id: "AI & ChatGPT", label: "AI", Icon: Cpu }
 ];
 
 const WINDOWS = [
-  { id: "all", label: "Visas rytas" },
-  { id: "hot", label: "Karsta" },
-  { id: "fresh", label: "Nauja" }
+  { id: "all", label: "All" },
+  { id: "hot", label: "Strong" },
+  { id: "fresh", label: "Fresh" }
 ];
 
 const topicMeta = {
-  Smegenys: {
+  "Brain Research": {
     Icon: Brain,
     color: "violet"
   },
@@ -146,22 +146,17 @@ const topicMeta = {
     Icon: HeartPulse,
     color: "green"
   },
-  WHOOP: {
+  "WHOOP & Wearables": {
     Icon: Watch,
     color: "coral"
   },
-  AI: {
+  "AI & ChatGPT": {
     Icon: Cpu,
     color: "cyan"
-  },
-  Knygos: {
-    Icon: BookOpen,
-    color: "amber"
   }
 };
 
 const TOPIC_ORDER = TOPICS.filter((topic) => topic.id !== "all").map((topic) => topic.id);
-
 const BASE_URL = import.meta.env.BASE_URL;
 
 function topicRank(topic) {
@@ -173,38 +168,40 @@ function repairText(value) {
   if (typeof value !== "string") return value;
 
   const replacements = [
-    ["â€™", "'"],
-    ["â€˜", "'"],
-    ["â€œ", '"'],
-    ["â€", '"'],
-    ["â€“", "-"],
-    ["â€”", "-"],
-    ["â€¦", "..."],
-    ["Å¡", "š"],
-    ["Å ", "Š"],
-    ["Å³", "ų"],
-    ["Å«", "ū"],
-    ["Å¾", "ž"],
-    ["Å½", "Ž"],
-    ["Ä…", "ą"],
-    ["Ä", "č"],
-    ["Ä—", "ė"],
-    ["Ä™", "ę"],
-    ["Ä¯", "į"],
-    ["Ä®", "Į"]
+    ["Ã¢â‚¬â„¢", "'"],
+    ["Ã¢â‚¬Ëœ", "'"],
+    ["Ã¢â‚¬Å“", '"'],
+    ["Ã¢â‚¬Â", '"'],
+    ["Ã¢â‚¬â€œ", "-"],
+    ["Ã¢â‚¬â€", "-"],
+    ["Ã¢â‚¬Â¦", "..."],
+    ["Ã…Â¡", "š"],
+    ["Ã…Â ", "Š"],
+    ["Ã…Â³", "ų"],
+    ["Ã…Â«", "ū"],
+    ["Ã…Â¾", "ž"],
+    ["Ã…Â½", "Ž"],
+    ["Ã„â€¦", "ą"],
+    ["Ã„Â", "č"],
+    ["Ã„â€”", "ė"],
+    ["Ã„â„¢", "ę"],
+    ["Ã„Â¯", "į"],
+    ["Ã„Â®", "Į"]
   ];
 
   return replacements.reduce((text, [bad, good]) => text.replaceAll(bad, good), value);
 }
 
-function cleanArticle(article) {
-  return Object.fromEntries(
-    Object.entries(article).map(([key, value]) => [key, repairText(value)])
-  );
+function cleanObject(value) {
+  if (Array.isArray(value)) return value.map(cleanObject);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cleanObject(item)]));
+  }
+  return repairText(value);
 }
 
 function formatDate(value, timezone = "Europe/London") {
-  return new Intl.DateTimeFormat("lt-LT", {
+  return new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -213,7 +210,7 @@ function formatDate(value, timezone = "Europe/London") {
 }
 
 function formatTime(value, timezone = "Europe/London") {
-  return new Intl.DateTimeFormat("lt-LT", {
+  return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: timezone
@@ -235,16 +232,17 @@ function getTopicCount(articles, topic) {
   return articles.filter((article) => article.topic === topic).length;
 }
 
-function buildBrief(articles, digest) {
+function buildBrief(articles, books, digest) {
   const date = formatDate(digest.generated_for, digest.timezone);
-  const lead = articles[0];
   const lines = [
-    `Ryto signalas - ${date}`,
-    lead ? `Svarbiausia: ${lead.title}` : "Svarbiausia: dar nera naujienu.",
+    `Morning Magazine - ${date}`,
     "",
     ...articles.slice(0, 5).map((article, index) => {
-      return `${index + 1}. ${article.title} (${article.source})`;
-    })
+      return `${index + 1}. ${article.title}: ${article.summary_en || article.summary}`;
+    }),
+    "",
+    "Book Recommendation:",
+    ...books.slice(0, 3).map((book) => `${book.title} - ${book.author}`)
   ];
 
   return lines.join("\n");
@@ -253,7 +251,7 @@ function buildBrief(articles, digest) {
 function App() {
   const [digest, setDigest] = useState(FALLBACK_DIGEST);
   const [loading, setLoading] = useState(true);
-  const [sourceState, setSourceState] = useState("Jungiama");
+  const [sourceState, setSourceState] = useState("Connecting");
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [windowFilter, setWindowFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -268,21 +266,19 @@ function App() {
       try {
         const response = await fetch(`${BASE_URL}ryto-signalas.json?t=${Date.now()}`);
         if (!response.ok) throw new Error("Digest not found");
-        const data = await response.json();
+        const data = cleanObject(await response.json());
         if (!active) return;
 
         setDigest({
           ...data,
-          articles: (data.articles ?? []).map(cleanArticle)
+          articles: data.articles ?? [],
+          book_recommendations: data.book_recommendations ?? []
         });
-        setSourceState("Gyvas RSS");
+        setSourceState(data.summary_engine === "openai" ? "Live magazine + AI summaries" : "Live magazine");
       } catch {
         if (!active) return;
-        setDigest({
-          ...FALLBACK_DIGEST,
-          articles: FALLBACK_DIGEST.articles.map(cleanArticle)
-        });
-        setSourceState("Demo režimas");
+        setDigest(cleanObject(FALLBACK_DIGEST));
+        setSourceState("Demo mode");
       } finally {
         if (active) setLoading(false);
       }
@@ -315,21 +311,30 @@ function App() {
       })
       .filter((article) => {
         if (!search) return true;
-        return [article.title, article.summary, article.source, article.tag]
+        return [
+          article.title,
+          article.summary_en,
+          article.summary_lt,
+          article.summary,
+          article.source,
+          article.tag,
+          article.topic
+        ]
           .join(" ")
           .toLowerCase()
           .includes(search);
       });
   }, [digest.articles, query, selectedTopic, windowFilter]);
 
+  const books = digest.book_recommendations ?? [];
   const lead = articles[0] ?? digest.articles?.[0];
   const topScore = Math.max(...(digest.articles ?? []).map((article) => article.score ?? 0), 0);
-  const sourceHealth = digest.feed_errors?.length ? "Yra klaidų" : "Šaltiniai OK";
+  const sourceHealth = digest.feed_errors?.length ? "Some source issues" : "Sources OK";
   const generatedLabel = formatDate(digest.generated_for, digest.timezone);
-  const copiedLabel = copied ? "Nukopijuota" : "Kopijuoti";
+  const copiedLabel = copied ? "Copied" : "Copy";
 
   async function handleCopy() {
-    const brief = buildBrief(articles, digest);
+    const brief = buildBrief(articles, books, digest);
     try {
       await navigator.clipboard.writeText(brief);
       setCopied(true);
@@ -347,15 +352,15 @@ function App() {
 
   return (
     <main className="news-app">
-      <section className="dashboard-shell" aria-label="Ryto signalas">
+      <section className="dashboard-shell" aria-label="Morning Magazine">
         <header className="topbar">
-          <a className="brand" href={BASE_URL} aria-label="Ryto signalas">
+          <a className="brand" href={BASE_URL} aria-label="Morning Magazine">
             <span className="brand-icon">
               <Newspaper size={22} />
             </span>
             <span>
-              <strong>Ryto signalas</strong>
-              <small>news every morning</small>
+              <strong>Morning Magazine</strong>
+              <small>English + Lietuviškai</small>
             </span>
           </a>
 
@@ -388,30 +393,33 @@ function App() {
               </span>
             </div>
 
-            <h1>{lead?.title ?? "Rytinis naujienų signalas"}</h1>
-            <p>{lead?.summary ?? "Agentas ruošia trumpą, prioritetizuotą naujienų digestą."}</p>
+            <h1>{lead?.title ?? "Your personal Morning Magazine"}</h1>
+            <p>
+              {lead?.summary_en ??
+                "Important news only, summarized in English with a complete Lithuanian translation under each item."}
+            </p>
 
-            <div className="signal-stats" aria-label="Digest metrics">
-              <Metric value={digest.articles?.length ?? 0} label="naujienos" Icon={Newspaper} />
-              <Metric value={topScore} label="signalas" Icon={Zap} />
+            <div className="signal-stats" aria-label="Magazine metrics">
+              <Metric value={digest.articles?.length ?? 0} label="articles" Icon={Newspaper} />
+              <Metric value={books.length} label="book picks" Icon={BookOpen} />
               <Metric value="06:00" label={digest.timezone} Icon={TimerReset} />
             </div>
           </div>
 
           <aside className="brief-panel">
             <div className="brief-title">
-              <span>Agentas</span>
+              <span>Editor</span>
               <Activity size={18} />
             </div>
             <div className="agent-steps">
-              <Step done label="RSS surinkimas" detail={sourceHealth} />
-              <Step done label="Prioritetas" detail="balas pagal naujumą ir temą" />
-              <Step done={!loading} label="Rytinis leidimas" detail="HTML, JSON, PDF" />
+              <Step done label="Reads sources" detail={sourceHealth} />
+              <Step done label="Summarizes" detail={digest.summary_engine ?? "automatic"} />
+              <Step done={!loading} label="Publishes" detail="HTML, JSON, PDF" />
             </div>
           </aside>
         </section>
 
-        <section className="controls-row" aria-label="Filtrai">
+        <section className="controls-row" aria-label="Filters">
           <div className="topic-tabs">
             {TOPICS.map(({ id, label, Icon }) => (
               <button
@@ -433,12 +441,12 @@ function App() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Paieška"
-                aria-label="Paieška"
+                placeholder="Search"
+                aria-label="Search"
               />
             </div>
 
-            <div className="segmented" aria-label="Langas">
+            <div className="segmented" aria-label="Time window">
               {WINDOWS.map((item) => (
                 <button
                   className={windowFilter === item.id ? "active" : ""}
@@ -451,14 +459,14 @@ function App() {
               ))}
             </div>
 
-            <button className="icon-action" type="button" onClick={resetFilters} aria-label="Išvalyti filtrus" title="Išvalyti">
+            <button className="icon-action" type="button" onClick={resetFilters} aria-label="Clear filters" title="Clear">
               <Filter size={18} />
             </button>
           </div>
         </section>
 
         <section className="content-grid">
-          <div className="article-list" aria-label="Naujienos">
+          <div className="article-list" aria-label="Magazine articles">
             {articles.map((article, index) => (
               <ArticleCard article={article} index={index} key={`${article.url}-${index}`} />
             ))}
@@ -466,16 +474,18 @@ function App() {
             {articles.length === 0 && (
               <div className="empty-state">
                 <Search size={28} />
-                <strong>Neradau atitikmenų</strong>
-                <span>Pabandyk kitą temą arba trumpesnę frazę.</span>
+                <strong>No meaningful updates</strong>
+                <span>This section was skipped instead of filling space with weak news.</span>
               </div>
             )}
+
+            <BookRecommendations books={books} />
           </div>
 
           <aside className="right-rail">
             <section className="rail-section">
               <div className="section-head">
-                <span>Temų pulsas</span>
+                <span>Section pulse</span>
                 <Flame size={17} />
               </div>
               <TopicPulse articles={digest.articles ?? []} />
@@ -483,7 +493,7 @@ function App() {
 
             <section className="rail-section">
               <div className="section-head">
-                <span>Šaltiniai</span>
+                <span>Sources</span>
                 <RefreshCw size={17} className={loading ? "spin" : ""} />
               </div>
               <SourceList articles={digest.articles ?? []} errors={digest.feed_errors ?? []} />
@@ -518,12 +528,13 @@ function Step({ done, label, detail }) {
 }
 
 function ArticleCard({ article, index }) {
-  const meta = topicMeta[article.topic] ?? topicMeta.AI;
+  const meta = topicMeta[article.topic] ?? topicMeta["AI & ChatGPT"];
   const Icon = meta.Icon;
   const score = article.score ?? 0;
+  const summaryEn = article.summary_en || article.summary;
 
   return (
-    <article className={`article-card tone-${meta.color}`}>
+    <article className={`article-card magazine-card tone-${meta.color}`}>
       <div className="article-rank">{String(index + 1).padStart(2, "0")}</div>
       <div className="article-main">
         <div className="article-meta">
@@ -535,7 +546,12 @@ function ArticleCard({ article, index }) {
         </div>
 
         <h2>{article.title}</h2>
-        <p>{article.summary}</p>
+        <p>{summaryEn}</p>
+
+        <section className="translation-block" aria-label="Lithuanian translation">
+          <h3>Lietuviškai</h3>
+          <p>{article.summary_lt || "Vertimas laikinai nepateiktas."}</p>
+        </section>
 
         <div className="article-footer">
           <a href={article.url} target="_blank" rel="noreferrer">
@@ -548,10 +564,47 @@ function ArticleCard({ article, index }) {
           </span>
         </div>
       </div>
-      <a className="open-link" href={article.url} target="_blank" rel="noreferrer" aria-label="Atidaryti šaltinį">
+      <a className="open-link" href={article.url} target="_blank" rel="noreferrer" aria-label="Open source">
         <ArrowUpRight size={19} />
       </a>
     </article>
+  );
+}
+
+function BookRecommendations({ books }) {
+  return (
+    <section className="book-recs" aria-label="Book Recommendation">
+      <div className="book-recs-head">
+        <div>
+          <span>Book Recommendation</span>
+          <h2>For the Shantaram / Great Alone mood</h2>
+        </div>
+        <BookOpen size={22} />
+      </div>
+
+      <div className="book-list">
+        {books.slice(0, 3).map((book) => (
+          <article className="book-card" key={`${book.title}-${book.author}`}>
+            <div className="article-meta">
+              <span>
+                <BookOpen size={15} />
+                {book.author}
+              </span>
+            </div>
+            <h3>{book.title}</h3>
+            <p>{book.summary_en}</p>
+            <section className="translation-block">
+              <h4>Lietuviškai</h4>
+              <p>{book.summary_lt}</p>
+            </section>
+            <a href={book.search_url} target="_blank" rel="noreferrer">
+              <ExternalLink size={15} />
+              Search book
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

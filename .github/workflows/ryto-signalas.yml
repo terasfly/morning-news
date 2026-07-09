@@ -1,4 +1,4 @@
-name: Ryto signalas
+name: Morning Magazine
 
 on:
   push:
@@ -58,6 +58,8 @@ jobs:
 
       - name: Build newspaper
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python build_ryto_signalas_pdf.py --timezone Europe/London --date "${{ steps.london-time.outputs.date }}"
 
