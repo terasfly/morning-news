@@ -58,47 +58,18 @@ GOLD = colors.HexColor("#B7853B")
 
 TOPICS = [
     {
-        "name": "AI",
-        "tag": "AI ir technologijos",
-        "why": (
-            "Kodėl tai svarbu: AI keičia darbą, produktus ir reguliavimą greičiau negu "
-            "dauguma komandų spėja prisitaikyti, todėl verta sekti ne tik modelių naujienas, "
-            "bet ir infrastruktūrą, politiką bei realius produktų pokyčius."
-        ),
-        "keywords": [
-            "ai",
-            "artificial intelligence",
-            "machine learning",
-            "openai",
-            "anthropic",
-            "google deepmind",
-            "model",
-            "robot",
-            "chip",
-            "nvidia",
-        ],
-        "feeds": [
-            ("ScienceDaily AI", "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml"),
-            ("TechCrunch AI", "https://techcrunch.com/category/artificial-intelligence/feed/"),
-            ("MIT News AI", "https://news.mit.edu/rss/topic/artificial-intelligence2"),
-            (
-                "Google News AI",
-                "https://news.google.com/rss/search?q=artificial%20intelligence%20OR%20AI%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
-            ),
-        ],
-    },
-    {
         "name": "Smegenys",
-        "tag": "Smegenų mokslas",
+        "tag": "Smegenu tyrimai",
         "why": (
-            "Kodėl tai svarbu: smegenų tyrimai lėtai keliasi iš laboratorinių atradimų į "
-            "diagnostiką, terapijas ir kasdienius sveikatos sprendimus. Geras signalas čia "
-            "yra atsargus, šaltiniais paremtas progresas."
+            "Kodel tai svarbu: smegenu tyrimai letai keliasi is laboratoriniu atradimu i "
+            "diagnostika, terapijas, miego, atminties ir kasdienes sveikatos sprendimus. "
+            "Cia svarbiausia atsargus, saltiniais paremtas progresas."
         ),
         "keywords": [
             "brain",
             "neuroscience",
             "neuron",
+            "neurodegeneration",
             "cognitive",
             "memory",
             "alzheimer",
@@ -106,14 +77,17 @@ TOPICS = [
             "dementia",
             "sleep",
             "mri",
+            "fmri",
+            "biomarker",
+            "neuroplasticity",
         ],
         "feeds": [
             ("ScienceDaily Neuroscience", "https://www.sciencedaily.com/rss/mind_brain/neuroscience.xml"),
             ("Neuroscience News", "https://neurosciencenews.com/feed/"),
             ("Nature Neuroscience", "https://www.nature.com/subjects/neuroscience.rss"),
             (
-                "Google News Neuroscience",
-                "https://news.google.com/rss/search?q=neuroscience%20OR%20brain%20science%20OR%20Alzheimer%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+                "Google News Brain Research",
+                "https://news.google.com/rss/search?q=neuroscience%20OR%20brain%20research%20OR%20Alzheimer%20OR%20Parkinson%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
         ],
     },
@@ -121,9 +95,9 @@ TOPICS = [
         "name": "Longevity",
         "tag": "Longevity ir healthspan",
         "why": (
-            "Kodėl tai svarbu: ilgaamžiškumo temos lengvai virsta pažadais be pagrindo. "
-            "Vertingiausios istorijos yra tos, kurios kalba apie healthspan, prevenciją, "
-            "senėjimo biologiją ir žmonėms patikrinamus veiksmus."
+            "Kodel tai svarbu: ilgaamziskumo temos lengvai virsta pazadais be pagrindo. "
+            "Vertingiausios istorijos kalba apie healthspan, prevencija, senejimo biologija "
+            "ir zmonems patikrinamus veiksmus."
         ),
         "keywords": [
             "longevity",
@@ -136,6 +110,9 @@ TOPICS = [
             "metabolism",
             "exercise",
             "nutrition",
+            "sleep",
+            "inflammation",
+            "biological age",
         ],
         "feeds": [
             ("ScienceDaily Healthy Aging", "https://www.sciencedaily.com/rss/health_medicine/healthy_aging.xml"),
@@ -143,7 +120,113 @@ TOPICS = [
             ("Nature Ageing", "https://www.nature.com/subjects/ageing.rss"),
             (
                 "Google News Longevity",
-                "https://news.google.com/rss/search?q=longevity%20OR%20healthspan%20OR%20aging%20research%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+                "https://news.google.com/rss/search?q=longevity%20OR%20healthspan%20OR%20aging%20research%20OR%20biological%20age%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+        ],
+    },
+    {
+        "name": "WHOOP",
+        "tag": "WHOOP ir wearables medicina",
+        "why": (
+            "Kodel tai svarbu: wearable irenginiai, tokie kaip WHOOP, juda link medicininiu "
+            "duomenu, klinikiniu tyrimu, HRV, miego, recovery ir kraujo tyrimu interpretacijos. "
+            "Cia svarbu atskirti tikra tyrima nuo marketingo."
+        ),
+        "keywords": [
+            "whoop",
+            "wearable",
+            "wearables",
+            "fitness tracker",
+            "smartwatch",
+            "heart rate variability",
+            "hrv",
+            "sleep tracking",
+            "recovery",
+            "bloodwork",
+            "clinical trial",
+            "medical study",
+            "digital health",
+        ],
+        "feeds": [
+            (
+                "Google News WHOOP",
+                "https://news.google.com/rss/search?q=WHOOP%20%28medical%20study%20OR%20clinical%20trial%20OR%20bloodwork%20OR%20sleep%20OR%20HRV%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+            (
+                "Google News Wearable Medicine",
+                "https://news.google.com/rss/search?q=%28wearable%20OR%20smartwatch%20OR%20fitness%20tracker%29%20%28medical%20study%20OR%20clinical%20trial%20OR%20digital%20health%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+            (
+                "Google News Sleep HRV",
+                "https://news.google.com/rss/search?q=%28sleep%20tracking%20OR%20heart%20rate%20variability%20OR%20HRV%29%20%28study%20OR%20research%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+        ],
+    },
+    {
+        "name": "AI",
+        "tag": "AI ir ChatGPT",
+        "why": (
+            "Kodel tai svarbu: AI ir ChatGPT atnaujinimai keicia darba, mokymasi, produktus "
+            "ir automatizacija. Verta sekti oficialius modeliu atnaujinimus ir realius produktu "
+            "pokycius, ne tik triuksma."
+        ),
+        "keywords": [
+            "ai",
+            "artificial intelligence",
+            "machine learning",
+            "openai",
+            "chatgpt",
+            "gpt",
+            "anthropic",
+            "claude",
+            "google deepmind",
+            "model",
+            "agent",
+            "robot",
+            "nvidia",
+        ],
+        "feeds": [
+            ("OpenAI News", "https://openai.com/news/rss.xml"),
+            ("ScienceDaily AI", "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml"),
+            ("TechCrunch AI", "https://techcrunch.com/category/artificial-intelligence/feed/"),
+            ("MIT News AI", "https://news.mit.edu/rss/topic/artificial-intelligence2"),
+            (
+                "Google News ChatGPT",
+                "https://news.google.com/rss/search?q=ChatGPT%20OR%20OpenAI%20OR%20GPT%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+            (
+                "Google News AI",
+                "https://news.google.com/rss/search?q=artificial%20intelligence%20OR%20AI%20agents%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+        ],
+    },
+    {
+        "name": "Knygos",
+        "tag": "Knyga pabaigai",
+        "limit": 1,
+        "why": (
+            "Kodel tai svarbu: dienos pabaigoje verta tureti viena platesni kulturos signala - "
+            "nauja, populiaria ar daug aptariama knyga, kuri gali buti verta demesio."
+        ),
+        "keywords": [
+            "book",
+            "books",
+            "bestseller",
+            "best seller",
+            "new release",
+            "novel",
+            "nonfiction",
+            "author",
+            "prize",
+            "nyt bestseller",
+        ],
+        "feeds": [
+            ("NYT Books", "https://rss.nytimes.com/services/xml/rss/nyt/Books.xml"),
+            ("NPR Books", "https://feeds.npr.org/1032/rss.xml"),
+            ("Book Riot", "https://bookriot.com/feed/"),
+            (
+                "Google News Bestselling Books",
+                "https://news.google.com/rss/search?q=%28bestseller%20OR%20best-selling%20OR%20new%20book%20release%29%20%28book%20OR%20novel%20OR%20nonfiction%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
         ],
     },
@@ -172,6 +255,11 @@ def clean_text(value: str | None) -> str:
     value = html.unescape(value)
     value = re.sub(r"\s+", " ", value).strip()
     return value
+
+
+def sanitize_xml(data: bytes) -> str:
+    text = data.decode("utf-8", errors="replace")
+    return re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", " ", text)
 
 
 def truncate_sentence(text: str, limit: int = 360) -> str:
@@ -233,7 +321,7 @@ def fetch_feed(url: str) -> bytes:
 
 
 def parse_feed(data: bytes, fallback_source: str, topic: dict) -> list[Article]:
-    root = ET.fromstring(data)
+    root = ET.fromstring(sanitize_xml(data))
     entries: list[Article] = []
     topic_text = " ".join(topic["keywords"]).lower()
 
@@ -310,6 +398,8 @@ def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
     seen: set[str] = set()
 
     for topic in TOPICS:
+        topic_limit = max(1, int(topic.get("limit", per_topic)))
+        topic_limit = min(per_topic, topic_limit)
         candidates: list[Article] = []
         for source, url in topic["feeds"]:
             try:
@@ -329,7 +419,7 @@ def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
             seen.add(title_key)
             selected.append(article)
             picked += 1
-            if picked >= per_topic:
+            if picked >= topic_limit:
                 break
 
     return selected, errors
@@ -577,13 +667,13 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
     <div class="hero-inner">
       <p class="kicker">Automatinis rytinis numeris</p>
       <h1>RYTO SIGNALAS</h1>
-      <p class="deck">AI, smegenys ir longevity · {html_escape(format_date_lt(run_date))}</p>
+      <p class="deck">Smegenys, longevity, WHOOP, AI ir knyga pabaigai · {html_escape(format_date_lt(run_date))}</p>
       <a class="download" href="{html_escape(pdf_name)}">Atsisiųsti PDF</a>
     </div>
   </section>
   <main>
     <section class="intro">
-      <p>Šis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam rytiniam signalui: kas pajudėjo AI, smegenų mokslo ir healthspan temose, su nuorodomis į pirminius šaltinius.</p>
+      <p>Šis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam rytiniam signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, AI bei ChatGPT temose. Gale visada paliekamas vienas knygos signalas.</p>
       <div class="stats">
         <div class="stat"><b>{len(articles)}</b><span>atrinktos istorijos</span></div>
         <div class="stat"><b>{len(TOPICS)}</b><span>temos</span></div>
@@ -644,7 +734,7 @@ def draw_page(canvas, doc):
     canvas.line(MARGIN_X, 10 * mm, PAGE_W - MARGIN_X, 10 * mm)
     canvas.setFont(getattr(doc, "body_font", "Helvetica"), 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(MARGIN_X, 6.4 * mm, "Ryto signalas | AI, smegenys ir longevity")
+    canvas.drawString(MARGIN_X, 6.4 * mm, "Ryto signalas | Smegenys, longevity, WHOOP, AI, knygos")
     canvas.drawRightString(PAGE_W - MARGIN_X, 6.4 * mm, f"Puslapis {doc.page}")
     canvas.restoreState()
 
@@ -855,7 +945,7 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
     story.append(Paragraph("RYTO SIGNALAS", styles["Masthead"]))
     story.append(
         Paragraph(
-            f"AI, smegenys ir longevity | {html_escape(format_date_lt(run_date))}",
+            f"Smegenys, longevity, WHOOP, AI ir knyga pabaigai | {html_escape(format_date_lt(run_date))}",
             styles["Deck"],
         )
     )
@@ -867,7 +957,7 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
         story.append(Spacer(1, 3))
         story.append(
             Paragraph(
-                "Viršelio iliustracija temai: AI, smegenys ir sveiko gyvenimo trukmė.",
+                "Viršelio iliustracija temai: smegenys, AI, sveiko gyvenimo trukmė ir rytinis dėmesys.",
                 styles["Small"],
             )
         )
@@ -876,8 +966,8 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
     story.append(
         Paragraph(
             "Šis rytinis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam "
-            "signalui: kas pajudėjo AI, smegenų mokslo ir healthspan temose, su nuorodomis į "
-            "šaltinius platesniam skaitymui.",
+            "signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, "
+            "AI bei ChatGPT temose. Gale visada paliekamas vienas knygos signalas.",
             styles["Lead"],
         )
     )

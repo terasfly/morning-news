@@ -533,6 +533,14 @@ a {
   background: var(--green);
 }
 
+.article-card.tone-coral::before {
+  background: var(--coral);
+}
+
+.article-card.tone-amber::before {
+  background: var(--amber);
+}
+
 .article-rank {
   width: 42px;
   min-height: 42px;
@@ -583,6 +591,16 @@ a {
 .tone-green .article-meta span {
   color: var(--green);
   background: var(--green-soft);
+}
+
+.tone-coral .article-meta span {
+  color: var(--coral);
+  background: var(--coral-soft);
+}
+
+.tone-amber .article-meta span {
+  color: var(--amber);
+  background: #fbf0d9;
 }
 
 .tone-cyan .article-meta span {

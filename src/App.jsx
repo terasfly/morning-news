@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
+  BookOpen,
   Brain,
   CalendarClock,
   Check,
@@ -18,6 +19,7 @@ import {
   Search,
   Sparkles,
   TimerReset,
+  Watch,
   Zap
 } from "lucide-react";
 import coverImage from "../rytinis-virselis.png";
@@ -27,26 +29,15 @@ const FALLBACK_DIGEST = {
   timezone: "Europe/London",
   articles: [
     {
-      topic: "AI",
-      tag: "AI ir technologijos",
-      title: "AI agentai keliasi is eksperimentu i kasdienius darbo srautus",
-      summary:
-        "Nauji agentiniai irankiai jau ne tik atsako i klausimus, bet ir planuoja veiksmus, seka saltinius, rengia santraukas bei padeda mazoms komandoms automatizuoti pasikartojanti darba.",
-      url: "https://news.google.com/search?q=AI%20agents",
-      source: "Demo saltinis",
-      published: new Date().toISOString(),
-      score: 88
-    },
-    {
       topic: "Smegenys",
-      tag: "Smegenu mokslas",
+      tag: "Smegenu tyrimai",
       title: "Smegenu sveikatos tyrimai vis dazniau jungia vaizdus, krauja ir elgsena",
       summary:
         "Tyrimu kryptis juda link pigesniu ankstyvo signalo metodu: biomarkeriai, skaitmeniniai testai ir ilgalaikiai gyvenimo budo duomenys vertinami kartu.",
       url: "https://news.google.com/search?q=brain%20science%20health",
       source: "Demo saltinis",
-      published: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      score: 74
+      published: new Date().toISOString(),
+      score: 84
     },
     {
       topic: "Longevity",
@@ -56,8 +47,41 @@ const FALLBACK_DIGEST = {
         "Ilgaamziskumo diskusija vis maziau sukasi apie vien papildus ir vis daugiau apie ismatuojamus iprocius, rizikos veiksnius bei personalizuota prevencija.",
       url: "https://news.google.com/search?q=longevity%20healthspan",
       source: "Demo saltinis",
+      published: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      score: 77
+    },
+    {
+      topic: "WHOOP",
+      tag: "WHOOP ir wearables medicina",
+      title: "Wearables signalai vertinami kartu su miego, HRV ir medicininiais tyrimais",
+      summary:
+        "WHOOP ir kiti irenginiai vis dazniau aptariami ne kaip zingsniu skaitikliai, o kaip nuolatinio matavimo sluoksnis salia klinikiniu tyrimu ir sveikatos sprendimu.",
+      url: "https://news.google.com/search?q=WHOOP%20wearable%20medical%20study",
+      source: "Demo saltinis",
       published: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      score: 69
+      score: 70
+    },
+    {
+      topic: "AI",
+      tag: "AI ir ChatGPT",
+      title: "AI ir ChatGPT atnaujinimai keliasi i kasdienius darbo srautus",
+      summary:
+        "Nauji agentiniai irankiai jau ne tik atsako i klausimus, bet ir planuoja veiksmus, seka saltinius, rengia santraukas bei padeda mazoms komandoms automatizuoti pasikartojanti darba.",
+      url: "https://news.google.com/search?q=ChatGPT%20OpenAI%20updates",
+      source: "Demo saltinis",
+      published: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      score: 68
+    },
+    {
+      topic: "Knygos",
+      tag: "Knyga pabaigai",
+      title: "Populiari nauja knyga rytiniam skaitymo radarui",
+      summary:
+        "Rytinio leidimo pabaigoje visada paliekamas vienas platesnis kulturos signalas: nauja, aptariama arba bestselleriuose kylanti knyga.",
+      url: "https://news.google.com/search?q=bestseller%20new%20book%20release",
+      source: "Demo saltinis",
+      published: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+      score: 52
     }
   ],
   feed_errors: []
@@ -70,11 +94,6 @@ const TOPICS = [
     Icon: Sparkles
   },
   {
-    id: "AI",
-    label: "AI",
-    Icon: Cpu
-  },
-  {
     id: "Smegenys",
     label: "Smegenys",
     Icon: Brain
@@ -83,6 +102,21 @@ const TOPICS = [
     id: "Longevity",
     label: "Longevity",
     Icon: HeartPulse
+  },
+  {
+    id: "WHOOP",
+    label: "WHOOP",
+    Icon: Watch
+  },
+  {
+    id: "AI",
+    label: "AI",
+    Icon: Cpu
+  },
+  {
+    id: "Knygos",
+    label: "Knygos",
+    Icon: BookOpen
   }
 ];
 
@@ -93,10 +127,6 @@ const WINDOWS = [
 ];
 
 const topicMeta = {
-  AI: {
-    Icon: Cpu,
-    color: "cyan"
-  },
   Smegenys: {
     Icon: Brain,
     color: "violet"
@@ -104,10 +134,29 @@ const topicMeta = {
   Longevity: {
     Icon: HeartPulse,
     color: "green"
+  },
+  WHOOP: {
+    Icon: Watch,
+    color: "coral"
+  },
+  AI: {
+    Icon: Cpu,
+    color: "cyan"
+  },
+  Knygos: {
+    Icon: BookOpen,
+    color: "amber"
   }
 };
 
+const TOPIC_ORDER = TOPICS.filter((topic) => topic.id !== "all").map((topic) => topic.id);
+
 const BASE_URL = import.meta.env.BASE_URL;
+
+function topicRank(topic) {
+  const index = TOPIC_ORDER.indexOf(topic);
+  return index === -1 ? TOPIC_ORDER.length : index;
+}
 
 function repairText(value) {
   if (typeof value !== "string") return value;
@@ -239,6 +288,10 @@ function App() {
 
     return [...(digest.articles ?? [])]
       .sort((a, b) => {
+        if (selectedTopic === "all") {
+          const topicDelta = topicRank(a.topic) - topicRank(b.topic);
+          if (topicDelta !== 0) return topicDelta;
+        }
         const scoreDelta = (b.score ?? 0) - (a.score ?? 0);
         if (scoreDelta !== 0) return scoreDelta;
         return new Date(b.published).getTime() - new Date(a.published).getTime();

@@ -1,6 +1,6 @@
 # Ryto signalas
 
-Personalizuotas rytinis naujienu agentas. Jis surenka RSS naujienas apie AI, smegenu moksla ir longevity, sugeneruoja JSON/PDF leidima, o React aplikacija parodo prioritetizuota rytini digesta su filtrais, saltiniu busena ir kopijuojama santrauka.
+Personalizuotas rytinis naujienu agentas. Jis surenka RSS naujienas apie smegenu tyrimus, longevity, WHOOP/wearables medicina, AI ir ChatGPT atnaujinimus, o gale prideda viena populiarios arba naujos knygos signala. Generatorius sukuria JSON/PDF leidima, o React aplikacija parodo prioritetizuota rytini digesta su filtrais, saltiniu busena ir kopijuojama santrauka.
 
 ## Atidaryti naujienas
 
