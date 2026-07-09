@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+public/
+node_modules/
+dist/
+*.log
+*.pdf
+build_ryto_signalas_2026_*.py

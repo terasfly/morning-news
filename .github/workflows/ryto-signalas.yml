@@ -1,0 +1,93 @@
+name: Ryto signalas
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check London time
+        id: london-time
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          now = datetime.now(ZoneInfo("Europe/London"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"hour={now:%H}\n")
+              output.write(f"date={now:%Y-%m-%d}\n")
+          PY
+
+      - name: Checkout
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build newspaper
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        run: |
+          python build_ryto_signalas_pdf.py --timezone Europe/London --date "${{ steps.london-time.outputs.date }}"
+
+      - name: Set up Node
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install frontend dependencies
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        run: npm ci
+
+      - name: Build app
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        run: npm run build
+
+      - name: Configure Pages
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Skip outside 06:00 Europe/London
+        if: github.event_name == 'schedule' && steps.london-time.outputs.hour != '06'
+        run: echo "Skipped because it is not 06:00 in Europe/London."
