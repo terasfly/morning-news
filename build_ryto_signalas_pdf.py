@@ -202,11 +202,12 @@ TOPICS = [
     },
     {
         "name": "Knygos",
-        "tag": "Knyga pabaigai",
-        "limit": 1,
+        "tag": "Knygos pabaigai",
+        "limit": 2,
         "why": (
-            "Kodel tai svarbu: dienos pabaigoje verta tureti viena platesni kulturos signala - "
-            "nauja, populiaria ar daug aptariama knyga, kuri gali buti verta demesio."
+            "Kodel tai svarbu: dienos pabaigoje verta tureti bent dvi knygas pagal tavo skoni - "
+            "epines keliones, laisve, isgyvenimas, stiprus charakteriai, wilderness ir "
+            "Shantaram tipo itraukiantis pasaulis."
         ),
         "keywords": [
             "book",
@@ -216,9 +217,37 @@ TOPICS = [
             "new release",
             "novel",
             "nonfiction",
+            "memoir",
+            "literary fiction",
+            "adventure",
+            "travel",
+            "travel memoir",
+            "survival",
+            "wilderness",
+            "alaska",
+            "india",
+            "freedom",
+            "journey",
+            "escape",
+            "shantaram",
             "author",
             "prize",
             "nyt bestseller",
+        ],
+        "preferred_keywords": [
+            "shantaram",
+            "alaska",
+            "wilderness",
+            "adventure",
+            "survival",
+            "travel memoir",
+            "journey",
+            "freedom",
+            "escape",
+            "epic",
+            "india",
+            "mountain",
+            "road",
         ],
         "feeds": [
             ("NYT Books", "https://rss.nytimes.com/services/xml/rss/nyt/Books.xml"),
@@ -227,6 +256,14 @@ TOPICS = [
             (
                 "Google News Bestselling Books",
                 "https://news.google.com/rss/search?q=%28bestseller%20OR%20best-selling%20OR%20new%20book%20release%29%20%28book%20OR%20novel%20OR%20nonfiction%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+            (
+                "Google News Adventure Books",
+                "https://news.google.com/rss/search?q=%28adventure%20OR%20survival%20OR%20wilderness%20OR%20travel%20memoir%20OR%20literary%20fiction%29%20%28book%20OR%20novel%20OR%20memoir%20OR%20review%29%20when%3A30d&hl=en-US&gl=US&ceid=US%3Aen",
+            ),
+            (
+                "Google News Shantaram Alaska Taste",
+                "https://news.google.com/rss/search?q=%28Shantaram%20OR%20Alaska%20OR%20wilderness%20OR%20journey%20OR%20freedom%29%20%28book%20OR%20novel%20OR%20memoir%20OR%20bestseller%20OR%20review%29%20when%3A30d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
         ],
     },
@@ -360,12 +397,15 @@ def make_article(
     combined = f"{title} {summary}".lower()
     keyword_hits = sum(1 for keyword in topic["keywords"] if keyword.lower() in combined)
     title_hits = sum(1 for keyword in topic["keywords"] if keyword.lower() in title.lower())
+    preferred_keywords = topic.get("preferred_keywords", [])
+    preferred_hits = sum(1 for keyword in preferred_keywords if keyword.lower() in combined)
+    preferred_title_hits = sum(1 for keyword in preferred_keywords if keyword.lower() in title.lower())
     recency = 0
     if published_dt:
         age_hours = max(0, (datetime.now(timezone.utc) - published_dt).total_seconds() / 3600)
         recency = max(0, int(24 - (age_hours / 3)))
     summary_bonus = 26 if summary_is_useful(title, summary) else 0
-    score = keyword_hits * 6 + title_hits * 4 + summary_bonus + recency
+    score = keyword_hits * 6 + title_hits * 4 + preferred_hits * 14 + preferred_title_hits * 8 + summary_bonus + recency
     if "google news" in feed_source.lower():
         score -= 22
     if topic["name"].lower() in topic_text:
@@ -399,7 +439,6 @@ def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
 
     for topic in TOPICS:
         topic_limit = max(1, int(topic.get("limit", per_topic)))
-        topic_limit = min(per_topic, topic_limit)
         candidates: list[Article] = []
         for source, url in topic["feeds"]:
             try:
@@ -667,13 +706,13 @@ def render_html(output_dir: Path, articles: list[Article], run_date: date, timez
     <div class="hero-inner">
       <p class="kicker">Automatinis rytinis numeris</p>
       <h1>RYTO SIGNALAS</h1>
-      <p class="deck">Smegenys, longevity, WHOOP, AI ir knyga pabaigai · {html_escape(format_date_lt(run_date))}</p>
+      <p class="deck">Smegenys, longevity, WHOOP, AI ir dvi knygos pabaigai · {html_escape(format_date_lt(run_date))}</p>
       <a class="download" href="{html_escape(pdf_name)}">Atsisiųsti PDF</a>
     </div>
   </section>
   <main>
     <section class="intro">
-      <p>Šis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam rytiniam signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, AI bei ChatGPT temose. Gale visada paliekamas vienas knygos signalas.</p>
+      <p>Šis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam rytiniam signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, AI bei ChatGPT temose. Gale visada paliekami bent du knygų signalai pagal tavo skonį.</p>
       <div class="stats">
         <div class="stat"><b>{len(articles)}</b><span>atrinktos istorijos</span></div>
         <div class="stat"><b>{len(TOPICS)}</b><span>temos</span></div>
@@ -945,7 +984,7 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
     story.append(Paragraph("RYTO SIGNALAS", styles["Masthead"]))
     story.append(
         Paragraph(
-            f"Smegenys, longevity, WHOOP, AI ir knyga pabaigai | {html_escape(format_date_lt(run_date))}",
+            f"Smegenys, longevity, WHOOP, AI ir dvi knygos pabaigai | {html_escape(format_date_lt(run_date))}",
             styles["Deck"],
         )
     )
@@ -967,7 +1006,7 @@ def build_pdf(output_dir: Path, articles: list[Article], run_date: date, timezon
         Paragraph(
             "Šis rytinis numeris automatiškai surinktas iš RSS šaltinių. Jis skirtas greitam "
             "signalui: kas pajudėjo smegenų tyrimuose, longevity, WHOOP ir wearables medicinoje, "
-            "AI bei ChatGPT temose. Gale visada paliekamas vienas knygos signalas.",
+            "AI bei ChatGPT temose. Gale visada paliekami bent du knygu signalai pagal tavo skoni.",
             styles["Lead"],
         )
     )

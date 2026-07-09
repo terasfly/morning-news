@@ -74,14 +74,25 @@ const FALLBACK_DIGEST = {
     },
     {
       topic: "Knygos",
-      tag: "Knyga pabaigai",
+      tag: "Knygos pabaigai",
       title: "Populiari nauja knyga rytiniam skaitymo radarui",
       summary:
-        "Rytinio leidimo pabaigoje visada paliekamas vienas platesnis kulturos signalas: nauja, aptariama arba bestselleriuose kylanti knyga.",
+        "Rytinio leidimo pabaigoje visada paliekami bent du kulturos signalai: naujos, aptariamos arba bestselleriuose kylancios knygos.",
       url: "https://news.google.com/search?q=bestseller%20new%20book%20release",
       source: "Demo saltinis",
       published: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
       score: 52
+    },
+    {
+      topic: "Knygos",
+      tag: "Knygos pabaigai",
+      title: "Knyga pagal tavo skoni: kelione, laisve ir isgyvenimas",
+      summary:
+        "Papildomas knygu signalas labiau iesko Shantaram ir Aliaskos nuotaikos: epines keliones, stiprus charakteriai, wilderness, laisve ir nuotykis.",
+      url: "https://news.google.com/search?q=adventure%20survival%20wilderness%20travel%20memoir%20book",
+      source: "Demo saltinis",
+      published: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+      score: 50
     }
   ],
   feed_errors: []
