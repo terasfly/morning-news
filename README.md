@@ -2,6 +2,10 @@
 
 Personalizuotas rytinis naujienų agentas. Jis surenka RSS naujienas apie AI, smegenų mokslą ir longevity, sugeneruoja JSON/PDF leidimą, o React aplikacija parodo prioritetizuotą rytinį digestą su filtrais, šaltinių būsena ir kopijuojama santrauka.
 
+## Atidaryti naujienas
+
+[Atidaryti Ryto signalą](https://terasfly.github.io/morning-news/)
+
 ## Vietinis paleidimas
 
 ```powershell

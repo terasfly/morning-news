@@ -107,6 +107,8 @@ const topicMeta = {
   }
 };
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 function repairText(value) {
   if (typeof value !== "string") return value;
 
@@ -204,7 +206,7 @@ function App() {
       setLoading(true);
 
       try {
-        const response = await fetch(`/ryto-signalas.json?t=${Date.now()}`);
+        const response = await fetch(`${BASE_URL}ryto-signalas.json?t=${Date.now()}`);
         if (!response.ok) throw new Error("Digest not found");
         const data = await response.json();
         if (!active) return;
@@ -283,7 +285,7 @@ function App() {
     <main className="news-app">
       <section className="dashboard-shell" aria-label="Ryto signalas">
         <header className="topbar">
-          <a className="brand" href="/" aria-label="Ryto signalas">
+          <a className="brand" href={BASE_URL} aria-label="Ryto signalas">
             <span className="brand-icon">
               <Newspaper size={22} />
             </span>
@@ -294,7 +296,7 @@ function App() {
           </a>
 
           <div className="topbar-actions">
-            <a className="ghost-button" href="/latest.pdf" target="_blank" rel="noreferrer">
+            <a className="ghost-button" href={`${BASE_URL}latest.pdf`} target="_blank" rel="noreferrer">
               <FileText size={17} />
               PDF
             </a>
