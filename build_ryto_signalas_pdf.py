@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -421,6 +421,135 @@ class BookRecommendation:
     search_url: str
 
 
+WHOOP_SCIENCE_FALLBACKS: list[Article] = [
+    Article(
+        topic="WHOOP & Wearables",
+        tag="WHOOP scientific validation",
+        title="WHOOP sleep, heart-rate and HRV metrics tested against other wearables",
+        summary=(
+            "A Sensors validation study compared six consumer wearables, including WHOOP 3.0, "
+            "against reference measures for sleep, heart rate and heart-rate variability. The useful "
+            "takeaway is not that any wearable is perfect, but that WHOOP-style recovery metrics have "
+            "published validation data and known limits. This is a good evergreen checkpoint when there "
+            "is no fresh WHOOP news because it helps separate measurement evidence from marketing."
+        ),
+        summary_en=(
+            "A Sensors validation study compared six consumer wearables, including WHOOP 3.0, "
+            "against reference measures for sleep, heart rate and heart-rate variability. The useful "
+            "takeaway is not that any wearable is perfect, but that WHOOP-style recovery metrics have "
+            "published validation data and known limits. This is a good evergreen checkpoint when there "
+            "is no fresh WHOOP news because it helps separate measurement evidence from marketing."
+        ),
+        summary_lt=(
+            "Sensors validacijos tyrimas palygino šešis vartotojų dėvimus įrenginius, tarp jų WHOOP 3.0, "
+            "su etaloniniais miego, širdies ritmo ir HRV matavimais. Naudingiausia išvada nėra ta, kad "
+            "kuris nors įrenginys tobulas, o tai, kad WHOOP tipo atsistatymo metrikos turi publikuotų "
+            "validacijos duomenų ir aiškesnes ribas. Tai geras atsarginis mokslinis signalas, kai nėra "
+            "šviežios WHOOP naujienos, nes jis padeda atskirti matavimo įrodymus nuo marketingo."
+        ),
+        url="https://pubmed.ncbi.nlm.nih.gov/36016077/",
+        source="PubMed / Sensors",
+        published="2022-08-27T12:00:00+00:00",
+        score=58,
+        read_status="evergreen-scientific-fallback",
+        word_count=120,
+    ),
+    Article(
+        topic="WHOOP & Wearables",
+        tag="WHOOP respiratory-rate signal",
+        title="WHOOP respiratory-rate changes studied as an early illness signal",
+        summary=(
+            "A PLOS ONE study examined whether respiratory-rate changes measured by WHOOP could help "
+            "classify COVID-19 illness risk before or around symptom onset. The important idea is broader "
+            "than COVID: overnight respiratory rate can behave like a stable personal baseline, and deviations "
+            "may flag physiological stress. For a daily magazine, this is a useful scientific anchor for why "
+            "wearables can matter beyond step counts."
+        ),
+        summary_en=(
+            "A PLOS ONE study examined whether respiratory-rate changes measured by WHOOP could help "
+            "classify COVID-19 illness risk before or around symptom onset. The important idea is broader "
+            "than COVID: overnight respiratory rate can behave like a stable personal baseline, and deviations "
+            "may flag physiological stress. For a daily magazine, this is a useful scientific anchor for why "
+            "wearables can matter beyond step counts."
+        ),
+        summary_lt=(
+            "PLOS ONE tyrimas nagrinėjo, ar WHOOP matuojami kvėpavimo dažnio pokyčiai gali padėti "
+            "klasifikuoti COVID-19 ligos riziką prieš simptomus arba jų pradžioje. Svarbi mintis platesnė "
+            "nei COVID: naktinis kvėpavimo dažnis gali būti gana stabilus asmeninis bazinis rodiklis, o "
+            "nukrypimai gali signalizuoti fiziologinį stresą. Rytiniam žurnalui tai geras mokslinis pagrindas, "
+            "kodėl dėvimi įrenginiai gali būti svarbūs ne tik žingsniams skaičiuoti."
+        ),
+        url="https://pmc.ncbi.nlm.nih.gov/articles/PMC7728254/",
+        source="PLOS ONE / PMC",
+        published="2020-11-30T12:00:00+00:00",
+        score=56,
+        read_status="evergreen-scientific-fallback",
+        word_count=125,
+    ),
+    Article(
+        topic="WHOOP & Wearables",
+        tag="WHOOP physiological response",
+        title="WHOOP biometrics captured temporary physiological changes after vaccination",
+        summary=(
+            "A Journal of Applied Physiology paper using WHOOP data reported temporary changes in "
+            "cardiovascular, respiratory and sleep physiology after COVID-19 vaccination. The practical "
+            "point is that large-scale wearable data can detect short-lived physiological shifts in real life, "
+            "outside a laboratory. That makes WHOOP-type data interesting for population-scale recovery, sleep "
+            "and stress research, as long as it is interpreted with context."
+        ),
+        summary_en=(
+            "A Journal of Applied Physiology paper using WHOOP data reported temporary changes in "
+            "cardiovascular, respiratory and sleep physiology after COVID-19 vaccination. The practical "
+            "point is that large-scale wearable data can detect short-lived physiological shifts in real life, "
+            "outside a laboratory. That makes WHOOP-type data interesting for population-scale recovery, sleep "
+            "and stress research, as long as it is interpreted with context."
+        ),
+        summary_lt=(
+            "Journal of Applied Physiology straipsnis, naudodamas WHOOP duomenis, aprašė laikinus "
+            "širdies-kraujagyslių, kvėpavimo ir miego fiziologijos pokyčius po COVID-19 vakcinacijos. "
+            "Praktinė esmė: didelio masto dėvimų įrenginių duomenys gali aptikti trumpalaikius fiziologinius "
+            "pokyčius realiame gyvenime, ne tik laboratorijoje. Todėl WHOOP tipo duomenys įdomūs populiaciniams "
+            "atsistatymo, miego ir streso tyrimams, jei jie interpretuojami su kontekstu."
+        ),
+        url="https://pubmed.ncbi.nlm.nih.gov/35019761/",
+        source="Journal of Applied Physiology / PubMed",
+        published="2022-01-12T12:00:00+00:00",
+        score=55,
+        read_status="evergreen-scientific-fallback",
+        word_count=124,
+    ),
+    Article(
+        topic="WHOOP & Wearables",
+        tag="WHOOP HR and HRV validation",
+        title="WHOOP wrist photoplethysmography assessed against ECG-derived HR and HRV",
+        summary=(
+            "A validation study assessed WHOOP's wrist photoplethysmography-derived heart rate and "
+            "heart-rate variability against ECG-derived measures. The result is useful because HRV is one "
+            "of the core signals behind recovery-style products, but it is also easy to overinterpret. "
+            "Including this older validation work keeps the WHOOP section grounded in measurement quality."
+        ),
+        summary_en=(
+            "A validation study assessed WHOOP's wrist photoplethysmography-derived heart rate and "
+            "heart-rate variability against ECG-derived measures. The result is useful because HRV is one "
+            "of the core signals behind recovery-style products, but it is also easy to overinterpret. "
+            "Including this older validation work keeps the WHOOP section grounded in measurement quality."
+        ),
+        summary_lt=(
+            "Validacijos tyrimas vertino WHOOP riešo fotopletizmografijos būdu gaunamą širdies ritmą ir "
+            "HRV, lyginant su EKG pagrindu gaunamais matavimais. Tai naudinga, nes HRV yra vienas svarbiausių "
+            "atsistatymo tipo produktų signalų, bet jį lengva per daug sureikšminti. Toks senesnis validacijos "
+            "darbas padeda WHOOP skiltį laikyti prie matavimo kokybės, o ne vien prie produkto pažadų."
+        ),
+        url="https://pmc.ncbi.nlm.nih.gov/articles/PMC8160717/",
+        source="PMC",
+        published="2021-05-27T12:00:00+00:00",
+        score=54,
+        read_status="evergreen-scientific-fallback",
+        word_count=112,
+    ),
+]
+
+
 def clean_text(value: str | None) -> str:
     if not value:
         return ""
@@ -547,6 +676,18 @@ def load_previous_article_keys(output_dir: Path, run_date: date) -> set[str]:
             keys.update(article_keys(item.get("url"), item.get("title")))
 
     return keys
+
+
+def whoop_science_fallback(run_date: date, excluded_keys: set[str], seen: set[str]) -> Article | None:
+    start = run_date.toordinal() % len(WHOOP_SCIENCE_FALLBACKS)
+    for offset in range(len(WHOOP_SCIENCE_FALLBACKS)):
+        candidate = WHOOP_SCIENCE_FALLBACKS[(start + offset) % len(WHOOP_SCIENCE_FALLBACKS)]
+        keys = article_keys(candidate.url, candidate.title)
+        if keys & excluded_keys or keys & seen:
+            continue
+        seen.update(keys)
+        return replace(candidate)
+    return None
 
 
 def parse_feed(data: bytes, fallback_source: str, topic: dict[str, Any]) -> list[Article]:
@@ -889,7 +1030,7 @@ def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
     return True
 
 
-def collect_articles(per_topic: int, excluded_keys: set[str] | None = None) -> tuple[list[Article], list[str]]:
+def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | None = None) -> tuple[list[Article], list[str]]:
     selected: list[Article] = []
     errors: list[str] = []
     seen: set[str] = set()
@@ -928,6 +1069,12 @@ def collect_articles(per_topic: int, excluded_keys: set[str] | None = None) -> t
                 break
             if checked >= 10:
                 break
+
+        if topic["name"] == "WHOOP & Wearables" and picked == 0:
+            fallback = whoop_science_fallback(run_date, excluded_keys, seen)
+            if fallback:
+                selected.append(fallback)
+                errors.append("Used an evergreen WHOOP scientific validation item because no stronger fresh WHOOP update was selected.")
 
     if skipped_existing:
         errors.append(f"Skipped {skipped_existing} articles already shown in today's published edition.")
@@ -1236,7 +1383,7 @@ def render_html(
       <div class="stats">
         <div class="stat"><b>{len(articles)}</b><span>news articles</span></div>
         <div class="stat"><b>{len(books)}</b><span>book picks</span></div>
-        <div class="stat"><b>08:05</b><span>scheduled {html_escape(timezone_name)}</span></div>
+        <div class="stat"><b>06:00</b><span>scheduled {html_escape(timezone_name)}</span></div>
         <div class="stat"><b>{html_escape(generated_time)}</b><span>updated {html_escape(generated_date)} {html_escape(timezone_name)}</span></div>
       </div>
     </section>
@@ -1428,7 +1575,7 @@ def build_pdf(
             [
                 Paragraph(f"<b>{len(articles)}</b><br/>news articles", styles["IndexItem"]),
                 Paragraph(f"<b>{len(books)}</b><br/>book picks", styles["IndexItem"]),
-                Paragraph("<b>08:05</b><br/>scheduled", styles["IndexItem"]),
+                Paragraph("<b>06:00</b><br/>scheduled", styles["IndexItem"]),
                 Paragraph(f"<b>{html_escape(generated_time)}</b><br/>updated {html_escape(timezone_name)}", styles["IndexItem"]),
             ]
         ],
@@ -1542,7 +1689,7 @@ def main() -> None:
     excluded_article_keys = load_previous_article_keys(output_dir, run_date)
 
     prepare_output_dir(output_dir)
-    articles, errors = collect_articles(per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
+    articles, errors = collect_articles(run_date, per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
     books = select_book_recommendations(run_date, count=args.book_count)
     pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
     render_html(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name, errors)
