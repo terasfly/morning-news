@@ -36,4 +36,4 @@ npm run preview
 
 ## GitHub Pages
 
-Workflow `.github/workflows/ryto-signalas.yml` is scheduled for about 07:16 `Europe/London`. It avoids the top-of-hour GitHub Actions load window, runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages.
+Workflow `.github/workflows/ryto-signalas.yml` is scheduled for about 07:22 `Europe/London`. It avoids the top-of-hour GitHub Actions load window, runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages.
