@@ -4,8 +4,11 @@ import {
   ArrowUpRight,
   BookOpen,
   Brain,
+  CalendarDays,
   CalendarClock,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Cpu,
   ExternalLink,
@@ -110,6 +113,13 @@ const FALLBACK_DIGEST = {
     {
       title: "The Snow Child",
       author: "Eowyn Ivey",
+      book_type: "Fiction inspired by folklore",
+      description_en:
+        "A childless couple tries to build a life in the Alaskan wilderness after years of grief. One winter night they make a girl out of snow, and soon a mysterious child begins appearing near their cabin. The novel stays quiet and atmospheric, blending frontier hardship, family longing, and a touch of wonder without giving easy answers.",
+      why_it_may_appeal: "It has the wild Alaska mood of The Great Alone, but with more tenderness, loneliness, and myth.",
+      length: "Approx. 10 hours audiobook / 400 pages",
+      goodreads_rating: "Approx. 3.9/5",
+      cover_url: "https://covers.openlibrary.org/b/isbn/9780316175678-L.jpg",
       summary_en:
         "This is an atmospheric Alaska novel about loneliness, wilderness, wonder, and the fragile bonds that keep people alive through hard winters. It matches your taste because the landscape feels like a character, and the emotional journey is quiet but powerful.",
       summary_lt:
@@ -119,11 +129,34 @@ const FALLBACK_DIGEST = {
     {
       title: "Lonesome Dove",
       author: "Larry McMurtry",
+      book_type: "Historical fiction",
+      description_en:
+        "Two aging former Texas Rangers drive cattle north across a dangerous and changing American frontier. The journey becomes a huge human canvas of friendship, violence, loyalty, regret, and endurance. It is long, funny, brutal, and deeply emotional without feeling sentimental.",
+      why_it_may_appeal: "It offers the same big lived-in-world feeling that makes Shantaram so immersive.",
+      length: "Approx. 36 hours audiobook / 850 pages",
+      goodreads_rating: "Approx. 4.5/5",
+      cover_url: "https://covers.openlibrary.org/b/isbn/9781439195260-L.jpg",
       summary_en:
         "A big, immersive journey across harsh country, built around friendship, endurance, loyalty, and loss. If you liked the vast human world of Shantaram, this gives a similar feeling of living inside a long road story with unforgettable characters.",
       summary_lt:
         "Tai plati, įtraukianti kelionė per atšiaurų kraštą, paremta draugyste, ištverme, lojalumu ir netektimi. Jei tau patiko didelis žmogiškas Shantaram pasaulis, ši knyga duoda panašų jausmą, lyg gyventum ilgoje kelionės istorijoje su nepamirštamais veikėjais.",
       search_url: "https://www.google.com/search?q=Lonesome+Dove+Larry+McMurtry+book"
+    },
+    {
+      title: "Wild",
+      author: "Cheryl Strayed",
+      book_type: "Memoir",
+      description_en:
+        "Cheryl Strayed hikes the Pacific Crest Trail after grief, addiction, and family rupture have upended her life. The trail is physically punishing, but the real movement is emotional and inward. It is a direct, vulnerable story of survival, reckoning, and rebuilding the self.",
+      why_it_may_appeal: "It is exactly in the true-life transformation, nature, and survival lane you described.",
+      length: "Approx. 13 hours audiobook / 336 pages",
+      goodreads_rating: "Approx. 4.0/5",
+      cover_url: "https://covers.openlibrary.org/b/isbn/9780307476074-L.jpg",
+      summary_en:
+        "A grief-struck woman walks the Pacific Crest Trail and turns physical hardship into a reckoning with her life. It fits your interest in emotional journeys, nature, survival, and rebuilding the self.",
+      summary_lt:
+        "Gedinti moteris eina Pacific Crest Trail keliu ir fizinį sunkumą paverčia akistata su savo gyvenimu. Ji tinka tavo pomėgiui emocinėms kelionėms, gamtai, išgyvenimui ir savęs atkūrimui.",
+      search_url: "https://www.google.com/search?q=Wild+Cheryl+Strayed+book"
     }
   ],
   daily_highlights: [
@@ -246,6 +279,7 @@ function formatDate(value, timezone = "Europe/London") {
     weekday: "long",
     month: "long",
     day: "numeric",
+    year: "numeric",
     timeZone: timezone
   }).format(new Date(value));
 }
@@ -256,6 +290,21 @@ function formatTime(value, timezone = "Europe/London") {
     minute: "2-digit",
     timeZone: timezone
   }).format(new Date(value));
+}
+
+function dateParamFromLocation() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("date");
+}
+
+function shiftIsoDate(value, days) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function monthKey(value) {
+  return value?.slice(0, 7) || new Date().toISOString().slice(0, 7);
 }
 
 function getArticleAge(article) {
@@ -282,7 +331,7 @@ function buildBrief(articles, books, digest) {
       return `${index + 1}. ${article.title}: ${article.summary_en || article.summary}`;
     }),
     "",
-    "Book Recommendation:",
+    "Books Section:",
     ...books.slice(0, 3).map((book) => `${book.title} - ${book.author}`)
   ];
 
@@ -297,15 +346,51 @@ function App() {
   const [windowFilter, setWindowFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dateParamFromLocation);
+  const [archiveIndex, setArchiveIndex] = useState({ editions: [] });
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [navNotice, setNavNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadArchive() {
+      try {
+        const response = await fetch(`${BASE_URL}archive/index.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error("Archive not found");
+        const data = cleanObject(await response.json());
+        if (active) setArchiveIndex({ ...data, editions: data.editions ?? [] });
+      } catch {
+        if (active) setArchiveIndex({ editions: [] });
+      }
+    }
+
+    loadArchive();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handlePopState() {
+      setSelectedDate(dateParamFromLocation());
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     async function loadDigest() {
       setLoading(true);
-
+      setNavNotice("");
       try {
-        const response = await fetch(`${BASE_URL}ryto-signalas.json?t=${Date.now()}`);
+        const digestPath = selectedDate
+          ? `${BASE_URL}archive/${selectedDate}/ryto-signalas.json?t=${Date.now()}`
+          : `${BASE_URL}ryto-signalas.json?t=${Date.now()}`;
+        const response = await fetch(digestPath);
         if (!response.ok) throw new Error("Digest not found");
         const data = cleanObject(await response.json());
         if (!active) return;
@@ -324,7 +409,8 @@ function App() {
       } catch {
         if (!active) return;
         setDigest(cleanObject(FALLBACK_DIGEST));
-        setSourceState("Demo mode");
+        setSourceState(selectedDate ? "Archive unavailable" : "Demo mode");
+        if (selectedDate) setNavNotice("This saved edition is not available yet.");
       } finally {
         if (active) setLoading(false);
       }
@@ -334,7 +420,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedDate]);
 
   const articles = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -390,6 +476,34 @@ function App() {
   const updatedTime = digest.generated_at ? formatTime(digest.generated_at, digest.timezone) : "--:--";
   const updatedDate = digest.generated_at ? formatDate(digest.generated_at, digest.timezone) : "update time unavailable";
   const copiedLabel = copied ? "Copied" : "Copy";
+  const archiveEditions = archiveIndex.editions ?? [];
+  const archiveDates = new Set(archiveEditions.map((edition) => edition.date));
+  const latestArchiveDate = archiveEditions[0]?.date ?? digest.generated_for;
+  const activeDate = digest.generated_for;
+  const previousDate = activeDate ? shiftIsoDate(activeDate, -1) : null;
+  const nextDate = activeDate ? shiftIsoDate(activeDate, 1) : null;
+  const previousAvailable = previousDate && archiveDates.has(previousDate);
+  const nextAvailable = nextDate && archiveDates.has(nextDate);
+  const pdfHref = selectedDate && digest.archive?.pdf ? `${BASE_URL}${digest.archive.pdf}` : `${BASE_URL}latest.pdf`;
+
+  function openEdition(date) {
+    if (!date || !archiveDates.has(date)) {
+      setNavNotice(date && date > activeDate ? "The next edition has not been published yet." : "This edition is not available in the archive.");
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (date === latestArchiveDate) {
+      url.searchParams.delete("date");
+      setSelectedDate(null);
+    } else {
+      url.searchParams.set("date", date);
+      setSelectedDate(date);
+    }
+    window.history.pushState({}, "", url);
+    setArchiveOpen(false);
+    setNavNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function handleCopy() {
     const brief = buildBrief(articles, books, digest);
@@ -423,7 +537,7 @@ function App() {
           </a>
 
           <div className="topbar-actions">
-            <a className="ghost-button" href={`${BASE_URL}latest.pdf`} target="_blank" rel="noreferrer">
+            <a className="ghost-button" href={pdfHref} target="_blank" rel="noreferrer">
               <FileText size={17} />
               PDF
             </a>
@@ -433,6 +547,57 @@ function App() {
             </button>
           </div>
         </header>
+
+        <section className="date-navigator" aria-label="Edition navigation">
+          <button
+            className="date-arrow"
+            type="button"
+            onClick={() => openEdition(previousDate)}
+            disabled={!previousAvailable}
+            title={previousAvailable ? "Previous Day" : "Previous edition unavailable"}
+          >
+            <ChevronLeft size={18} />
+            Previous Day
+          </button>
+
+          <div className="date-display">
+            <button
+              className="calendar-button"
+              type="button"
+              onClick={() => setArchiveOpen((open) => !open)}
+              aria-expanded={archiveOpen}
+              title="Open archive calendar"
+            >
+              <CalendarDays size={18} />
+            </button>
+            <strong>{generatedLabel}</strong>
+          </div>
+
+          <button
+            className="date-arrow"
+            type="button"
+            onClick={() => openEdition(nextDate)}
+            disabled={!nextAvailable}
+            title={nextAvailable ? "Next Day" : "The next edition has not been published yet."}
+          >
+            Next Day
+            <ChevronRight size={18} />
+          </button>
+        </section>
+
+        {(navNotice || !nextAvailable) && (
+          <div className="archive-notice">
+            {navNotice || "The next edition has not been published yet."}
+          </div>
+        )}
+
+        {archiveOpen && (
+          <ArchiveCalendar
+            activeDate={activeDate}
+            editions={archiveEditions}
+            onSelect={openEdition}
+          />
+        )}
 
         <section className="summary-band">
           <div className="morning-visual" aria-hidden="true">
@@ -601,6 +766,73 @@ function App() {
   );
 }
 
+function ArchiveCalendar({ activeDate, editions, onSelect }) {
+  const savedDates = new Set(editions.map((edition) => edition.date));
+  const [visibleMonth, setVisibleMonth] = useState(monthKey(activeDate));
+
+  useEffect(() => {
+    setVisibleMonth(monthKey(activeDate));
+  }, [activeDate]);
+
+  const firstDay = new Date(`${visibleMonth}-01T12:00:00Z`);
+  const daysInMonth = new Date(Date.UTC(firstDay.getUTCFullYear(), firstDay.getUTCMonth() + 1, 0)).getUTCDate();
+  const leadingBlanks = (firstDay.getUTCDay() + 6) % 7;
+  const cells = [
+    ...Array.from({ length: leadingBlanks }, (_, index) => ({ key: `blank-${index}` })),
+    ...Array.from({ length: daysInMonth }, (_, index) => {
+      const day = String(index + 1).padStart(2, "0");
+      const date = `${visibleMonth}-${day}`;
+      return { key: date, date, day: index + 1, saved: savedDates.has(date), active: date === activeDate };
+    })
+  ];
+  const monthLabel = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(firstDay);
+
+  function moveMonth(delta) {
+    const next = new Date(`${visibleMonth}-01T12:00:00Z`);
+    next.setUTCMonth(next.getUTCMonth() + delta);
+    setVisibleMonth(next.toISOString().slice(0, 7));
+  }
+
+  return (
+    <section className="archive-calendar" aria-label="Archive calendar">
+      <div className="archive-calendar-head">
+        <button type="button" onClick={() => moveMonth(-1)} aria-label="Previous month">
+          <ChevronLeft size={17} />
+        </button>
+        <strong>{monthLabel}</strong>
+        <button type="button" onClick={() => moveMonth(1)} aria-label="Next month">
+          <ChevronRight size={17} />
+        </button>
+      </div>
+
+      <div className="calendar-weekdays" aria-hidden="true">
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+
+      <div className="calendar-grid">
+        {cells.map((cell) =>
+          cell.date ? (
+            <button
+              type="button"
+              key={cell.key}
+              className={cell.active ? "calendar-day active" : cell.saved ? "calendar-day saved" : "calendar-day"}
+              onClick={() => onSelect(cell.date)}
+              disabled={!cell.saved}
+              title={cell.saved ? `Open ${cell.date}` : "No edition saved"}
+            >
+              {cell.day}
+            </button>
+          ) : (
+            <span className="calendar-blank" key={cell.key} />
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
 function NoteSection({ title, notes, Icon, compact = false }) {
   if (!notes?.length) return null;
 
@@ -727,11 +959,11 @@ function ArticleCard({ article, index }) {
 
 function BookRecommendations({ books }) {
   return (
-    <section className="book-recs" aria-label="Book Recommendation">
+    <section className="book-recs" aria-label="Book Recommendations">
       <div className="book-recs-head">
         <div>
-          <span>Book Recommendation</span>
-          <h2>For the Shantaram / Great Alone mood</h2>
+          <span>Books Section</span>
+          <h2>Three books for the Shantaram / Great Alone mood</h2>
         </div>
         <BookOpen size={22} />
       </div>
@@ -739,14 +971,27 @@ function BookRecommendations({ books }) {
       <div className="book-list">
         {books.slice(0, 3).map((book) => (
           <article className="book-card" key={`${book.title}-${book.author}`}>
+            {book.cover_url && <img className="book-cover" src={book.cover_url} alt={`${book.title} cover`} loading="lazy" />}
+            <div className="book-details">
             <div className="article-meta">
               <span>
                 <BookOpen size={15} />
-                {book.author}
+                {book.book_type || "Fiction"}
               </span>
+              <span>{book.author}</span>
             </div>
             <h3>{book.title}</h3>
-            <p>{book.summary_en}</p>
+            <div className="book-facts">
+              <span>{book.length || "Length varies by edition"}</span>
+              <span>Goodreads: {book.goodreads_rating || "rating unavailable"}</span>
+            </div>
+            <p>{book.description_en || book.summary_en}</p>
+            <section className="insight-block">
+              <p>
+                <strong>Why it may appeal:</strong>{" "}
+                {book.why_it_may_appeal || "It matches your interest in immersive, emotional human stories."}
+              </p>
+            </section>
             <section className="translation-block">
               <h4>Lietuviškai</h4>
               <p>{book.summary_lt}</p>
@@ -755,6 +1000,7 @@ function BookRecommendations({ books }) {
               <ExternalLink size={15} />
               Search book
             </a>
+            </div>
           </article>
         ))}
       </div>

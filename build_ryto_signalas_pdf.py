@@ -63,6 +63,8 @@ PUBLISHED_DATA_URL = os.getenv(
     "PUBLISHED_DATA_URL",
     "https://terasfly.github.io/morning-news/ryto-signalas.json",
 )
+PUBLISHED_SITE_URL = os.getenv("PUBLISHED_SITE_URL", "https://terasfly.github.io/morning-news").rstrip("/")
+ARCHIVE_INDEX_URL = f"{PUBLISHED_SITE_URL}/archive/index.json"
 
 
 TOPICS: list[dict[str, Any]] = [
@@ -396,6 +398,295 @@ BOOK_LIBRARY: list[dict[str, str]] = [
 ]
 
 
+TRUE_STORY_BOOK_TYPES = {
+    "Memoir",
+    "True story",
+    "Biography",
+    "Narrative nonfiction",
+    "Travel memoir",
+    "Survival nonfiction",
+    "Inspired by real events",
+}
+
+
+BOOK_METADATA: dict[str, dict[str, str]] = {
+    "The Snow Child": {
+        "book_type": "Fiction inspired by folklore",
+        "isbn": "9780316175678",
+        "description_en": "A childless couple tries to build a life in the Alaskan wilderness after years of grief. One winter night they make a girl out of snow, and soon a mysterious child begins appearing near their cabin. The novel stays quiet and atmospheric, blending frontier hardship, family longing, and a touch of wonder without giving easy answers.",
+        "why_it_may_appeal": "It has the wild Alaska mood of The Great Alone, but with more tenderness, loneliness, and myth.",
+        "length": "Approx. 10 hours audiobook / 400 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "Lonesome Dove": {
+        "book_type": "Historical fiction",
+        "isbn": "9781439195260",
+        "description_en": "Two aging former Texas Rangers drive cattle north across a dangerous and changing American frontier. The journey becomes a huge human canvas of friendship, violence, loyalty, regret, and endurance. It is long, funny, brutal, and deeply emotional without feeling sentimental.",
+        "why_it_may_appeal": "It offers the same big lived-in-world feeling that makes Shantaram so immersive.",
+        "length": "Approx. 36 hours audiobook / 850 pages",
+        "goodreads_rating": "Approx. 4.5/5",
+    },
+    "A Fine Balance": {
+        "book_type": "Literary fiction",
+        "isbn": "9781400030651",
+        "description_en": "Four people from different backgrounds are thrown together in India during political upheaval. Their lives become linked through work, survival, kindness, and terrible pressure from the world around them. The book is expansive, intimate, and emotionally devastating, with a strong sense of place and social reality.",
+        "why_it_may_appeal": "It has the Indian atmosphere, human density, and moral struggle that can make Shantaram unforgettable.",
+        "length": "Approx. 25 hours audiobook / 624 pages",
+        "goodreads_rating": "Approx. 4.4/5",
+    },
+    "The River": {
+        "book_type": "Adventure fiction",
+        "isbn": "9780525521877",
+        "description_en": "Two college friends paddle through remote Canadian wilderness and sense that danger is moving toward them. A wildfire, a distant argument, and the isolation of the river turn the trip into a survival story. The prose is lean, physical, and tense, with friendship at the center.",
+        "why_it_may_appeal": "It is a compact wilderness thriller with emotional loyalty under pressure.",
+        "length": "Approx. 7 hours audiobook / 272 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "Where the Crawdads Sing": {
+        "book_type": "Fiction",
+        "isbn": "9780735219090",
+        "description_en": "A girl grows up largely alone in the marshes of North Carolina, learning the natural world as both home and refuge. Her isolation shapes her intelligence, vulnerability, and ability to survive. The story combines nature writing, coming-of-age emotion, and mystery without losing its strong landscape mood.",
+        "why_it_may_appeal": "It fits the emotional wilderness and self-reliance side of The Great Alone.",
+        "length": "Approx. 12 hours audiobook / 384 pages",
+        "goodreads_rating": "Approx. 4.4/5",
+    },
+    "Papillon": {
+        "book_type": "Memoir / autobiographical adventure",
+        "isbn": "9780061120667",
+        "description_en": "Henri Charriere recounts imprisonment, escape attempts, danger, and survival after being sent to a brutal penal colony. The book reads like a relentless adventure driven by freedom and refusal to be broken. Some details have been debated, but its power as a life-and-escape narrative is hard to deny.",
+        "why_it_may_appeal": "It has the fugitive energy, risk, and outsider life force that sits close to Shantaram.",
+        "length": "Approx. 21 hours audiobook / 560 pages",
+        "goodreads_rating": "Approx. 4.2/5",
+    },
+    "The Four Winds": {
+        "book_type": "Historical fiction",
+        "isbn": "9781250178602",
+        "description_en": "A woman and her family face drought, poverty, migration, and hard choices during the Dust Bowl. The story is built around endurance, motherhood, dignity, and the cost of survival. It is sweeping and emotional, with the landscape itself acting like a force against the characters.",
+        "why_it_may_appeal": "It matches the resilience-under-brutal-conditions feeling of The Great Alone.",
+        "length": "Approx. 15 hours audiobook / 464 pages",
+        "goodreads_rating": "Approx. 4.3/5",
+    },
+    "Cutting for Stone": {
+        "book_type": "Literary fiction",
+        "isbn": "9780375714368",
+        "description_en": "Twin brothers are born in Ethiopia under dramatic circumstances and grow up surrounded by medicine, family secrets, and political change. The novel follows them across countries, relationships, and moral choices. It is immersive, humane, and rich with medical and emotional detail.",
+        "why_it_may_appeal": "It has the whole-life sweep and emotional world-building that Shantaram readers often like.",
+        "length": "Approx. 23 hours audiobook / 688 pages",
+        "goodreads_rating": "Approx. 4.3/5",
+    },
+    "The Poisonwood Bible": {
+        "book_type": "Literary fiction",
+        "isbn": "9780061577079",
+        "description_en": "A missionary family moves to the Belgian Congo, where belief, power, and family bonds are tested by a world they do not understand. The story is told through the women of the family, giving it emotional range and moral tension. It is a big, intelligent novel about place, consequence, and survival.",
+        "why_it_may_appeal": "It offers powerful setting, family pressure, and long emotional consequences.",
+        "length": "Approx. 24 hours audiobook / 576 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "Welcome to the Goddamn Ice Cube": {
+        "book_type": "Memoir",
+        "isbn": "9780062311569",
+        "description_en": "Blair Braverman writes about Alaska, Norway, sled dogs, cold, fear, and learning self-reliance. The memoir is honest about vulnerability as well as toughness. It is a wilderness book, but also a personal transformation story about boundaries and courage.",
+        "why_it_may_appeal": "It strongly matches the raw cold-weather survival atmosphere of The Great Alone.",
+        "length": "Approx. 8 hours audiobook / 288 pages",
+        "goodreads_rating": "Approx. 3.8/5",
+    },
+    "The Salt Path": {
+        "book_type": "Memoir / true story",
+        "isbn": "9781405937184",
+        "description_en": "After losing their home and facing a frightening diagnosis, a couple walks the South West Coast Path in England. Their journey is physically hard, emotionally exposing, and quietly restorative. The book is about love, homelessness, landscape, and what remains when ordinary security disappears.",
+        "why_it_may_appeal": "It combines survival, marriage under pressure, healing through walking, and real-life resilience.",
+        "length": "Approx. 9 hours audiobook / 288 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "Damnation Spring": {
+        "book_type": "Literary fiction",
+        "isbn": "9781982144401",
+        "description_en": "A logging family in Northern California faces loyalty, environmental damage, infertility, and the costs of making a living from the land. The novel is intimate but rooted in a whole community. It is a slow-burn story about marriage, nature, work, and moral pressure.",
+        "why_it_may_appeal": "It has the family, landscape, and hard-choice pressure that sits near The Great Alone.",
+        "length": "Approx. 15 hours audiobook / 464 pages",
+        "goodreads_rating": "Approx. 4.0/5",
+    },
+    "The Far Pavilions": {
+        "book_type": "Historical adventure fiction",
+        "isbn": "9780312151256",
+        "description_en": "A sweeping story moves across nineteenth-century India through war, identity, loyalty, and romance. It is broad, old-fashioned, and full of journey, danger, and cultural tension. The scale is large, and the setting is a major part of the experience.",
+        "why_it_may_appeal": "It may appeal if the India setting and long adventure arc were central to Shantaram for you.",
+        "length": "Approx. 48 hours audiobook / 960 pages",
+        "goodreads_rating": "Approx. 4.2/5",
+    },
+    "Wild": {
+        "book_type": "Memoir",
+        "isbn": "9780307476074",
+        "description_en": "Cheryl Strayed hikes the Pacific Crest Trail after grief, addiction, and family rupture have upended her life. The trail is physically punishing, but the real movement is emotional and inward. It is a direct, vulnerable story of survival, reckoning, and rebuilding the self.",
+        "why_it_may_appeal": "It is exactly in the true-life transformation, nature, and survival lane you described.",
+        "length": "Approx. 13 hours audiobook / 336 pages",
+        "goodreads_rating": "Approx. 4.0/5",
+    },
+    "Tracks": {
+        "book_type": "Travel memoir / true story",
+        "isbn": "9780679762874",
+        "description_en": "Robyn Davidson crosses the Australian desert with camels and a dog, seeking solitude and testing herself against the land. The journey is dangerous, spare, and psychologically intense. It is less about conquest than about independence, silence, and what a person meets inside herself in extreme space.",
+        "why_it_may_appeal": "It gives the real-life wilderness endurance of Wild with a more solitary, desert atmosphere.",
+        "length": "Approx. 8 hours audiobook / 256 pages",
+        "goodreads_rating": "Approx. 4.0/5",
+    },
+    "The Covenant of Water": {
+        "book_type": "Historical literary fiction",
+        "isbn": "9780802162175",
+        "description_en": "A family in Kerala carries a strange pattern of loss across generations, while medicine, faith, secrets, and love shape their lives. The novel is vast but intimate, following people through illness, devotion, and change. It is a patient, immersive story with deep emotional inheritance.",
+        "why_it_may_appeal": "It has the long, absorbing, whole-family life story feeling that can follow Shantaram well.",
+        "length": "Approx. 31 hours audiobook / 736 pages",
+        "goodreads_rating": "Approx. 4.5/5",
+    },
+    "Shogun": {
+        "book_type": "Historical adventure fiction",
+        "isbn": "9780440178002",
+        "description_en": "An English sailor is thrown into feudal Japan and must learn a dangerous new world of politics, war, culture, and loyalty. The book is huge, strategic, and deeply immersive. It is about survival in an unfamiliar society as much as it is about power and reinvention.",
+        "why_it_may_appeal": "It gives the long-form adventure, outsider energy, and cultural immersion that Shantaram fans often want.",
+        "length": "Approx. 53 hours audiobook / 1152 pages",
+        "goodreads_rating": "Approx. 4.4/5",
+    },
+    "The Beach": {
+        "book_type": "Adventure fiction",
+        "isbn": "9781573226523",
+        "description_en": "A backpacker in Thailand hears about a hidden beach and joins a secret community that seems like paradise. The dream gradually becomes tense, unstable, and morally dangerous. It is a travel novel about escape, belonging, and the dark side of chasing intensity.",
+        "why_it_may_appeal": "It connects to Shantaram through outsider travel, danger, and seductive worlds with cracks underneath.",
+        "length": "Approx. 13 hours audiobook / 448 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "The Overstory": {
+        "book_type": "Literary fiction",
+        "isbn": "9780393356687",
+        "description_en": "Several human lives become connected through trees, ecological loss, activism, and grief. The novel is ambitious and slower than a pure adventure story, but it expands the emotional scale of nature. It asks readers to see human life inside a much larger living system.",
+        "why_it_may_appeal": "It is strong if you want nature to feel vast, alive, and morally important.",
+        "length": "Approx. 23 hours audiobook / 512 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "Marching Powder": {
+        "book_type": "True story / narrative nonfiction",
+        "isbn": "9780312330347",
+        "description_en": "This book follows life inside Bolivia's San Pedro prison, where the rules are stranger and more dangerous than ordinary prison stories suggest. It is full of survival, corruption, friendship, risk, and moral gray zones. The result reads almost like fiction, but it is grounded in a reported real-life world.",
+        "why_it_may_appeal": "It is one of the closest Shantaram-adjacent picks: danger, outsiders, friendship, and unbelievable lived experience.",
+        "length": "Approx. 10 hours audiobook / 400 pages",
+        "goodreads_rating": "Approx. 4.2/5",
+    },
+    "The Call of the Wild": {
+        "book_type": "Classic adventure fiction",
+        "isbn": "9780486264721",
+        "description_en": "A domesticated dog is pulled into the brutal northern wilderness and forced toward instinct, endurance, and transformation. The story is short, fierce, and mythic. It captures survival pressure in a compact classic form.",
+        "why_it_may_appeal": "It is a quick return to the raw wilderness energy behind many Alaska stories.",
+        "length": "Approx. 3 hours audiobook / 160 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "The Great Railway Bazaar": {
+        "book_type": "Travel writing / true journey",
+        "isbn": "9780618658947",
+        "description_en": "Paul Theroux travels by train across Europe and Asia, observing strangers, discomfort, landscapes, and the odd intimacy of long-distance travel. The book is restless, opinionated, and full of movement. It is less plot than journey, but it carries the reader through many human worlds.",
+        "why_it_may_appeal": "It suits the travel, observation, and many-worlds side of Shantaram.",
+        "length": "Approx. 13 hours audiobook / 384 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "The Old Ways": {
+        "book_type": "Nature writing / travel nonfiction",
+        "isbn": "9780147509796",
+        "description_en": "Robert Macfarlane walks old paths and reflects on landscape, memory, language, and the way places shape people. It is meditative rather than plot-driven. The pleasure is in attention, atmosphere, and the feeling of moving through deep time.",
+        "why_it_may_appeal": "It is for mornings when you want nature, journey, and reflection more than action.",
+        "length": "Approx. 11 hours audiobook / 448 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "This Tender Land": {
+        "book_type": "Historical fiction",
+        "isbn": "9781476749303",
+        "description_en": "Four children escape a harsh school and travel by river through Depression-era America. Along the way they meet danger, kindness, faith, and found family. The story has adventure, emotional warmth, and an old-fashioned journey structure.",
+        "why_it_may_appeal": "It blends road-story momentum with human bonds and survival.",
+        "length": "Approx. 14 hours audiobook / 464 pages",
+        "goodreads_rating": "Approx. 4.3/5",
+    },
+    "The Light Between Oceans": {
+        "book_type": "Historical fiction",
+        "isbn": "9781451681758",
+        "description_en": "A lighthouse keeper and his wife live in isolation on a remote island after World War I. A single impossible choice tests love, grief, conscience, and family. The novel is quiet, emotional, and built around the cost of doing what feels right.",
+        "why_it_may_appeal": "It fits the human relationship and isolation side of your taste.",
+        "length": "Approx. 10 hours audiobook / 352 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "News of the World": {
+        "book_type": "Historical fiction",
+        "isbn": "9780062409201",
+        "description_en": "An elderly former soldier agrees to return a young girl to relatives after she has lived for years with the Kiowa. Their journey across dangerous country becomes a spare story of trust and protection. It is short, beautifully controlled, and emotionally resonant.",
+        "why_it_may_appeal": "It offers harsh landscape, slow trust, and a moving road-story bond.",
+        "length": "Approx. 6 hours audiobook / 224 pages",
+        "goodreads_rating": "Approx. 4.1/5",
+    },
+    "The North Water": {
+        "book_type": "Historical adventure fiction",
+        "isbn": "9781627795944",
+        "description_en": "A disgraced surgeon joins a nineteenth-century Arctic whaling voyage where violence, cold, greed, and survival collide. The novel is dark, brutal, and tightly driven. It is not gentle, but it is powerful if you want nature at its most hostile.",
+        "why_it_may_appeal": "It delivers raw wilderness pressure and moral danger in a compact form.",
+        "length": "Approx. 8 hours audiobook / 272 pages",
+        "goodreads_rating": "Approx. 4.0/5",
+    },
+    "The Signature of All Things": {
+        "book_type": "Historical literary fiction",
+        "isbn": "9780143125846",
+        "description_en": "A brilliant woman grows into a life shaped by botany, science, travel, desire, and the natural world. The novel follows curiosity and loneliness across decades. It is slower and more intellectual, but immersive in its portrait of a whole life.",
+        "why_it_may_appeal": "It gives a rich life-story arc where nature and transformation matter.",
+        "length": "Approx. 21 hours audiobook / 512 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "State of Wonder": {
+        "book_type": "Literary adventure fiction",
+        "isbn": "9780062049810",
+        "description_en": "A doctor travels into the Amazon to investigate a research project that has become secretive and morally complicated. The jungle setting creates danger, uncertainty, and a sense of being far from ordinary rules. The novel blends science, ethics, memory, and emotional pressure.",
+        "why_it_may_appeal": "It offers an immersive faraway setting and the moral unease that can make adventure stories linger.",
+        "length": "Approx. 12 hours audiobook / 368 pages",
+        "goodreads_rating": "Approx. 3.9/5",
+    },
+    "The Mosquito Coast": {
+        "book_type": "Adventure fiction",
+        "isbn": "9780618658961",
+        "description_en": "A brilliant but obsessive father takes his family into the Honduran jungle to build a new life away from modern society. What begins as idealism becomes dangerous control. The novel is a family survival story as much as a travel adventure.",
+        "why_it_may_appeal": "It matches the pressure of family, wilderness, and a charismatic but dangerous dream.",
+        "length": "Approx. 15 hours audiobook / 384 pages",
+        "goodreads_rating": "Approx. 3.8/5",
+    },
+    "The Sheltering Sky": {
+        "book_type": "Literary travel fiction",
+        "isbn": "9780060834821",
+        "description_en": "A couple travels through North Africa after World War II, trying to escape emptiness and recover meaning. The desert becomes beautiful, alienating, and psychologically dangerous. It is atmospheric, unsettling, and more existential than plot-driven.",
+        "why_it_may_appeal": "It offers intense outsider travel and a powerful sense of place.",
+        "length": "Approx. 12 hours audiobook / 352 pages",
+        "goodreads_rating": "Approx. 3.8/5",
+    },
+    "The Orchardist": {
+        "book_type": "Literary fiction",
+        "isbn": "9780062188502",
+        "description_en": "A solitary orchardist in the Pacific Northwest takes in two vulnerable girls and becomes drawn into violence, care, and loss. The book is quiet, patient, and beautifully rooted in landscape. It is about damaged people finding fragile shelter rather than easy rescue.",
+        "why_it_may_appeal": "It fits the remote-landscape, wounded-family, human-tenderness side of your taste.",
+        "length": "Approx. 13 hours audiobook / 448 pages",
+        "goodreads_rating": "Approx. 3.8/5",
+    },
+}
+
+
+def book_metadata(title: str) -> dict[str, str]:
+    metadata = BOOK_METADATA.get(title, {})
+    isbn = metadata.get("isbn", "")
+    cover_url = metadata.get("cover_url") or (f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg" if isbn else "")
+    return {
+        "book_type": metadata.get("book_type", "Fiction"),
+        "description_en": metadata.get("description_en", ""),
+        "why_it_may_appeal": metadata.get("why_it_may_appeal", "It matches your interest in immersive, human stories with emotional weight."),
+        "length": metadata.get("length", "Length varies by edition"),
+        "goodreads_rating": metadata.get("goodreads_rating", "Goodreads rating unavailable"),
+        "cover_url": cover_url,
+    }
+
+
+def book_key(title: str) -> str:
+    return re.sub(r"\W+", "", title.lower())
+
+
 @dataclass
 class Article:
     topic: str
@@ -420,6 +711,12 @@ class Article:
 class BookRecommendation:
     title: str
     author: str
+    book_type: str
+    description_en: str
+    why_it_may_appeal: str
+    length: str
+    goodreads_rating: str
+    cover_url: str
     summary_en: str
     summary_lt: str
     search_url: str
@@ -650,6 +947,98 @@ def fetch_url(url: str, timeout: int = 25) -> bytes:
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read()
+
+
+def safe_archive_date(value: str) -> bool:
+    return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value or ""))
+
+
+def restore_published_archive(output_dir: Path) -> None:
+    archive_dir = output_dir / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    cache_bust = int(datetime.now(timezone.utc).timestamp())
+    try:
+        raw_index = fetch_url(f"{ARCHIVE_INDEX_URL}?t={cache_bust}", timeout=15)
+        index_payload = json.loads(raw_index.decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return
+
+    editions = index_payload.get("editions", [])
+    if not isinstance(editions, list):
+        return
+
+    (archive_dir / "index.json").write_text(json.dumps(index_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    for entry in editions:
+        if not isinstance(entry, dict):
+            continue
+        edition_date = entry.get("date")
+        if not safe_archive_date(edition_date):
+            continue
+        edition_dir = archive_dir / edition_date
+        edition_dir.mkdir(parents=True, exist_ok=True)
+        downloads = [
+            (entry.get("json") or f"archive/{edition_date}/ryto-signalas.json", edition_dir / "ryto-signalas.json"),
+            (
+                entry.get("pdf") or f"archive/{edition_date}/morning-magazine-{edition_date}.pdf",
+                edition_dir / f"morning-magazine-{edition_date}.pdf",
+            ),
+            (entry.get("html") or f"archive/{edition_date}/index.html", edition_dir / "index.html"),
+        ]
+        for relative_url, destination in downloads:
+            if destination.exists() or not isinstance(relative_url, str):
+                continue
+            url = f"{PUBLISHED_SITE_URL}/{relative_url.lstrip('/')}"
+            try:
+                destination.write_bytes(fetch_url(f"{url}?t={cache_bust}", timeout=20))
+            except (urllib.error.URLError, TimeoutError, OSError):
+                continue
+
+
+def build_archive_index(output_dir: Path, generated_at: datetime) -> None:
+    archive_dir = output_dir / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    editions: list[dict[str, str]] = []
+    for path in sorted(archive_dir.glob("*/ryto-signalas.json"), reverse=True):
+        edition_date = path.parent.name
+        if not safe_archive_date(edition_date):
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            payload = {}
+        pdf_name = f"morning-magazine-{edition_date}.pdf"
+        editions.append(
+            {
+                "date": edition_date,
+                "label": format_date_en(date.fromisoformat(edition_date)),
+                "generated_at": payload.get("generated_at", ""),
+                "json": f"archive/{edition_date}/ryto-signalas.json",
+                "pdf": f"archive/{edition_date}/{pdf_name}",
+                "html": f"archive/{edition_date}/index.html",
+            }
+        )
+
+    payload = {
+        "title": "Morning Magazine Archive",
+        "generated_at": generated_at.isoformat(timespec="seconds"),
+        "editions": editions,
+    }
+    (archive_dir / "index.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def archive_current_edition(output_dir: Path, run_date: date, pdf_name: str, generated_at: datetime) -> None:
+    edition_date = run_date.isoformat()
+    edition_dir = output_dir / "archive" / edition_date
+    edition_dir.mkdir(parents=True, exist_ok=True)
+    files = [
+        (output_dir / "ryto-signalas.json", edition_dir / "ryto-signalas.json"),
+        (output_dir / pdf_name, edition_dir / pdf_name),
+        (output_dir / "index.html", edition_dir / "index.html"),
+    ]
+    for source, destination in files:
+        if source.exists():
+            shutil.copy2(source, destination)
+    build_archive_index(output_dir, generated_at)
 
 
 def article_keys(url: str | None, title: str | None) -> set[str]:
@@ -1164,23 +1553,89 @@ def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | N
     return selected, errors
 
 
-def select_book_recommendations(run_date: date, count: int = 3) -> list[BookRecommendation]:
-    count = max(1, min(3, count))
-    start = (run_date.toordinal() * count) % len(BOOK_LIBRARY)
-    picks = [BOOK_LIBRARY[(start + offset) % len(BOOK_LIBRARY)] for offset in range(count)]
-    recommendations = []
-    for book in picks:
-        query = urllib.parse.quote_plus(f"{book['title']} {book['author']} book")
-        recommendations.append(
-            BookRecommendation(
-                title=book["title"],
-                author=book["author"],
-                summary_en=book["summary_en"],
-                summary_lt=book["summary_lt"],
-                search_url=f"https://www.google.com/search?q={query}",
-            )
-        )
-    return recommendations
+def rotated_books(books: list[dict[str, str]], seed: int) -> list[dict[str, str]]:
+    if not books:
+        return []
+    start = seed % len(books)
+    return books[start:] + books[:start]
+
+
+def make_book_recommendation(book: dict[str, str]) -> BookRecommendation:
+    metadata = book_metadata(book["title"])
+    description = metadata["description_en"] or book["summary_en"]
+    query = urllib.parse.quote_plus(f"{book['title']} {book['author']} book")
+    return BookRecommendation(
+        title=book["title"],
+        author=book["author"],
+        book_type=metadata["book_type"],
+        description_en=description,
+        why_it_may_appeal=metadata["why_it_may_appeal"],
+        length=metadata["length"],
+        goodreads_rating=metadata["goodreads_rating"],
+        cover_url=metadata["cover_url"],
+        summary_en=book["summary_en"],
+        summary_lt=book["summary_lt"],
+        search_url=f"https://www.google.com/search?q={query}",
+    )
+
+
+def load_previous_book_titles(output_dir: Path, run_date: date) -> set[str]:
+    used: set[str] = set()
+    archive_dir = output_dir / "archive"
+    if not archive_dir.exists():
+        return used
+
+    for path in archive_dir.glob("*/ryto-signalas.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        generated_for = payload.get("generated_for")
+        if generated_for == run_date.isoformat():
+            continue
+        for book in payload.get("book_recommendations", []):
+            if isinstance(book, dict) and book.get("title"):
+                used.add(book_key(book["title"]))
+    return used
+
+
+def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3) -> list[BookRecommendation]:
+    count = 3
+    previous_titles = load_previous_book_titles(output_dir, run_date)
+    available = [book for book in BOOK_LIBRARY if book_key(book["title"]) not in previous_titles]
+    if len(available) < count:
+        available = BOOK_LIBRARY[:]
+
+    seed = run_date.toordinal()
+    primary_pool = [
+        book
+        for book in available
+        if book_metadata(book["title"])["book_type"] in TRUE_STORY_BOOK_TYPES
+    ]
+    if not primary_pool:
+        primary_pool = [
+            book
+            for book in BOOK_LIBRARY
+            if book_metadata(book["title"])["book_type"] in TRUE_STORY_BOOK_TYPES
+        ]
+    if not primary_pool:
+        primary_pool = available
+
+    picks: list[dict[str, str]] = []
+    first_pick = rotated_books(primary_pool, seed)[0]
+    picks.append(first_pick)
+
+    remaining = [book for book in available if book_key(book["title"]) != book_key(first_pick["title"])]
+    if len(remaining) < count - 1:
+        remaining = [book for book in BOOK_LIBRARY if book_key(book["title"]) != book_key(first_pick["title"])]
+    for book in rotated_books(remaining, seed * 3 + 7):
+        if len(picks) >= count:
+            break
+        if book_key(book["title"]) in {book_key(item["title"]) for item in picks}:
+            continue
+        picks.append(book)
+
+    return [make_book_recommendation(book) for book in picks[:count]]
 
 
 def build_daily_highlights(articles: list[Article]) -> list[DigestNote]:
@@ -1448,12 +1903,25 @@ def render_html(
         book_cards.append(
             f"""
             <article class="story book-story">
-              <div class="story-meta"><span>Book Recommendation</span><span>{html_escape(book.author)}</span></div>
+              <div class="book-layout">
+                <img src="{html_escape(book.cover_url)}" alt="{html_escape(book.title)} cover">
+                <div>
+              <div class="story-meta"><span>{html_escape(book.book_type)}</span><span>{html_escape(book.author)}</span></div>
               <h3>{html_escape(book.title)}</h3>
+              <div class="story-tags">
+                <span>{html_escape(book.length)}</span>
+                    <span>Goodreads: {html_escape(book.goodreads_rating)}</span>
+              </div>
+              <p>{html_escape(book.description_en)}</p>
+              <div class="story-insight">
+                <p><b>Why it may appeal:</b> {html_escape(book.why_it_may_appeal)}</p>
+              </div>
               <p>{html_escape(book.summary_en)}</p>
               <h4>Lietuviškai</h4>
               <p>{html_escape(book.summary_lt)}</p>
               <a href="{html_escape(book.search_url)}" target="_blank" rel="noreferrer">Search book</a>
+                </div>
+              </div>
             </article>
             """
         )
@@ -1679,6 +2147,19 @@ def render_html(
       padding-left: 12px;
       padding-right: 12px;
     }}
+    .book-layout {{
+      display: grid;
+      grid-template-columns: 128px 1fr;
+      gap: 16px;
+      align-items: start;
+    }}
+    .book-layout img {{
+      width: 128px;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      background: var(--white);
+    }}
     .source-health {{
       margin-top: 24px;
       padding: 14px;
@@ -1698,6 +2179,8 @@ def render_html(
       .intro {{ grid-template-columns: 1fr; }}
       .stats {{ grid-template-columns: 1fr; }}
       .note-grid {{ grid-template-columns: 1fr; }}
+      .book-layout {{ grid-template-columns: 1fr; }}
+      .book-layout img {{ width: 112px; }}
       .hero-inner {{ padding: 42px 0 34px; }}
     }}
   </style>
@@ -1727,7 +2210,7 @@ def render_html(
     {save_section}
     {weekly_section}
     <section class="book-section">
-      <h2 class="section-title">Book Recommendation</h2>
+      <h2 class="section-title">Books Section</h2>
       {''.join(book_cards)}
     </section>
     {error_note}
@@ -1882,13 +2365,62 @@ def notes_block(title: str, notes: list[DigestNote], styles):
         Spacer(1, 8),
     ]
 
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "item"
 
-def book_block(book: BookRecommendation, styles):
+
+def local_book_cover(output_dir: Path, book: BookRecommendation) -> Path | None:
+    if not book.cover_url:
+        return None
+    cover_dir = output_dir / "assets" / "book-covers"
+    cover_dir.mkdir(parents=True, exist_ok=True)
+    cover_path = cover_dir / f"{slugify(book.title + '-' + book.author)}.jpg"
+    if not cover_path.exists():
+        try:
+            data = fetch_url(book.cover_url, timeout=12)
+            if len(data) > 800:
+                cover_path.write_bytes(data)
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return None
+    return cover_path if cover_path.exists() else None
+
+
+def book_block(book: BookRecommendation, styles, output_dir: Path):
+    cover_path = local_book_cover(output_dir, book)
+    cover_cell = ""
+    if cover_path:
+        try:
+            cover_cell = Image(str(cover_path), width=26 * mm, height=39 * mm)
+        except Exception:
+            cover_cell = ""
+
+    details = [
+        Paragraph(html_escape(f"{book.title} - {book.author}"), styles["Headline"]),
+        Paragraph(
+            f"<b>{html_escape(book.book_type)}</b> | {html_escape(book.length)} | Goodreads: {html_escape(book.goodreads_rating)}",
+            styles["Source"],
+        ),
+        Paragraph(html_escape(book.description_en), styles["Body"]),
+        Paragraph(f"<b>Why it may appeal:</b> {html_escape(book.why_it_may_appeal)}", styles["Insight"]),
+    ]
+    book_table = Table([[cover_cell, details]], colWidths=[31 * mm, CONTENT_W - 31 * mm])
+    book_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
     return KeepTogether(
         [
             Spacer(1, 8),
             Table(
-                [[Paragraph("BOOK RECOMMENDATION", styles["SectionLabel"])]],
+                [[Paragraph("BOOKS SECTION", styles["SectionLabel"])]],
                 colWidths=[CONTENT_W],
                 style=[
                     ("LINEABOVE", (0, 0), (-1, 0), 0.8, RULE),
@@ -1896,7 +2428,7 @@ def book_block(book: BookRecommendation, styles):
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
                 ],
             ),
-            Paragraph(html_escape(f"{book.title} - {book.author}"), styles["Headline"]),
+            book_table,
             Paragraph(html_escape(book.summary_en), styles["Body"]),
             Paragraph("<b>Lietuviškai</b>", styles["Source"]),
             Paragraph(html_escape(book.summary_lt), styles["Lithuanian"]),
@@ -2036,9 +2568,9 @@ def build_pdf(
         story.append(Paragraph("No high-quality news updates were selected today.", styles["Body"]))
 
     story.append(PageBreak())
-    story.append(Paragraph("Book Recommendation", styles["SectionTitle"]))
+    story.append(Paragraph("Books Section", styles["SectionTitle"]))
     for book in books:
-        story.append(book_block(book, styles))
+        story.append(book_block(book, styles, output_dir))
 
     story.append(Spacer(1, 10))
     story.append(
@@ -2079,6 +2611,12 @@ def write_data(
         "weekly_summary": [asdict(note) for note in weekly_summary],
         "whoop_evidence": asdict(whoop_evidence) if whoop_evidence else None,
         "cover_theme": cover_theme,
+        "archive": {
+            "date": run_date.isoformat(),
+            "json": f"archive/{run_date.isoformat()}/ryto-signalas.json",
+            "pdf": f"archive/{run_date.isoformat()}/morning-magazine-{run_date.isoformat()}.pdf",
+            "html": f"archive/{run_date.isoformat()}/index.html",
+        },
         "feed_errors": errors,
     }
     (output_dir / "ryto-signalas.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2090,7 +2628,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timezone", default=os.getenv("NEWS_TIMEZONE", DEFAULT_TIMEZONE), help="IANA timezone for dates.")
     parser.add_argument("--date", help="Publication date in YYYY-MM-DD format. Defaults to today in the selected timezone.")
     parser.add_argument("--per-topic", type=int, default=2, help="Maximum number of news stories to select per topic.")
-    parser.add_argument("--book-count", type=int, default=3, help="Number of book recommendations, from 1 to 3.")
+    parser.add_argument("--book-count", type=int, default=3, help="Book recommendation count; daily editions publish exactly 3.")
     return parser.parse_args()
 
 
@@ -2101,11 +2639,12 @@ def main() -> None:
     run_date = date.fromisoformat(args.date) if args.date else datetime.now(tz).date()
     generated_at = datetime.now(tz).replace(microsecond=0)
     output_dir = Path(args.output_dir).resolve()
-    excluded_article_keys = load_previous_article_keys(output_dir, run_date)
 
     prepare_output_dir(output_dir)
+    restore_published_archive(output_dir)
+    excluded_article_keys = load_previous_article_keys(output_dir, run_date)
     articles, errors = collect_articles(run_date, per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
-    books = select_book_recommendations(run_date, count=args.book_count)
+    books = select_book_recommendations(run_date, output_dir, count=args.book_count)
     daily_highlights = build_daily_highlights(articles)
     save_for_later = select_save_for_later(articles)
     weekly_summary = build_weekly_summary(run_date, articles)
@@ -2156,6 +2695,7 @@ def main() -> None:
         generated_at,
         timezone_name,
     )
+    archive_current_edition(output_dir, run_date, pdf_name, generated_at)
 
     print(f"Generated {output_dir / 'index.html'}")
     print(f"Generated {output_dir / pdf_name}")

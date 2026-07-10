@@ -194,6 +194,135 @@ a {
   transform: translateY(-1px);
 }
 
+.date-navigator {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow);
+}
+
+.date-arrow,
+.calendar-button,
+.archive-calendar-head button,
+.calendar-day {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.date-arrow:first-child {
+  justify-self: start;
+}
+
+.date-arrow:last-child {
+  justify-self: end;
+}
+
+.date-arrow:disabled,
+.calendar-day:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+  transform: none;
+}
+
+.date-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.date-display strong {
+  font-size: clamp(1rem, 2vw, 1.22rem);
+  letter-spacing: 0;
+}
+
+.calendar-button {
+  width: 38px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+}
+
+.archive-notice {
+  border: 1px solid #e3d2ad;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #805609;
+  background: #fff5dc;
+  font-weight: 700;
+}
+
+.archive-calendar {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.archive-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.archive-calendar-head strong {
+  font-size: 1.05rem;
+}
+
+.archive-calendar-head button {
+  width: 38px;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekdays span {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.calendar-day,
+.calendar-blank {
+  min-height: 42px;
+}
+
+.calendar-day.saved {
+  border-color: #bddfc7;
+  color: #0f5d33;
+  background: #eef8f0;
+  font-weight: 900;
+}
+
+.calendar-day.active {
+  border-color: #20362b;
+  color: white;
+  background: #20362b;
+  font-weight: 900;
+}
+
 .summary-band {
   min-height: 320px;
   overflow: hidden;
@@ -1010,11 +1139,27 @@ a {
 
 .book-card {
   display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
   gap: 9px;
   border: 1px solid #e3d2ad;
   border-radius: 8px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.78);
+}
+
+.book-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: 1px solid #e3d2ad;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+
+.book-details {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
 }
 
 .book-card h3 {
@@ -1030,7 +1175,25 @@ a {
   line-height: 1.55;
 }
 
-.book-card > a {
+.book-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.book-facts span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: #805609;
+  background: #fff5dc;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.book-card a {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
@@ -1104,6 +1267,15 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .date-navigator {
+    grid-template-columns: 1fr;
+  }
+
+  .date-arrow:first-child,
+  .date-arrow:last-child {
+    justify-self: stretch;
+  }
+
   .toolstrip {
     justify-content: stretch;
     flex-wrap: wrap;
@@ -1123,6 +1295,10 @@ a {
   .signal-stats,
   .note-list {
     grid-template-columns: 1fr;
+  }
+
+  .book-card {
+    grid-template-columns: 92px minmax(0, 1fr);
   }
 }
 
@@ -1159,5 +1335,23 @@ a {
 
   .pulse-row {
     grid-template-columns: 1fr 76px 24px;
+  }
+
+  .calendar-grid,
+  .calendar-weekdays {
+    gap: 4px;
+  }
+
+  .calendar-day,
+  .calendar-blank {
+    min-height: 36px;
+  }
+
+  .book-card {
+    grid-template-columns: 1fr;
+  }
+
+  .book-cover {
+    width: 96px;
   }
 }
