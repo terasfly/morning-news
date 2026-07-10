@@ -410,6 +410,10 @@ class Article:
     score: int
     read_status: str
     word_count: int
+    source_type: str = ""
+    hype_level: str = ""
+    hype_filter: str = ""
+    practical_takeaway: str = ""
 
 
 @dataclass
@@ -419,6 +423,14 @@ class BookRecommendation:
     summary_en: str
     summary_lt: str
     search_url: str
+
+
+@dataclass
+class DigestNote:
+    title: str
+    detail: str
+    topic: str = ""
+    url: str = ""
 
 
 WHOOP_SCIENCE_FALLBACKS: list[Article] = [
@@ -1016,7 +1028,7 @@ def enrich_article(article: Article, topic: dict[str, Any]) -> Article:
     article.word_count = word_count
     if read_status.startswith("article"):
         article.score += 8
-    return article
+    return annotate_article(article)
 
 
 def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
@@ -1028,6 +1040,76 @@ def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
     if article.source.lower().startswith("google news") and article.word_count < 80:
         return False
     return True
+
+
+def classify_source_type(article: Article) -> str:
+    source = f"{article.source} {article.url} {article.read_status}".lower()
+    if "evergreen-scientific-fallback" in source:
+        return "Older scientific evidence"
+    if any(marker in source for marker in ("pubmed", "pmc", "nature", "plos", "journal", "sensors")):
+        return "Peer-reviewed / scientific source"
+    if any(marker in source for marker in ("university", "sciencedaily", "medicalxpress", "news-medical")):
+        return "Research report"
+    if any(marker in source for marker in ("openai", "anthropic", "whoop.com", "google", "meta", "deepmind")):
+        return "Company / product update"
+    if "google news" in source:
+        return "News search result"
+    return "Media report"
+
+
+def estimate_hype_level(article: Article, source_type: str) -> str:
+    text = f"{article.title} {article.summary_en} {article.summary}".lower()
+    hype_words = (
+        "breakthrough",
+        "revolutionary",
+        "miracle",
+        "cure",
+        "anti-aging",
+        "anti ageing",
+        "game changer",
+        "secret",
+        "stunning",
+        "shocking",
+    )
+    if any(word in text for word in hype_words):
+        return "High"
+    if source_type in {"Peer-reviewed / scientific source", "Older scientific evidence", "Research report"}:
+        return "Low"
+    if article.topic in {"Longevity", "AI & ChatGPT"}:
+        return "Medium"
+    return "Low"
+
+
+def build_hype_filter(article: Article, source_type: str, hype_level: str) -> str:
+    if hype_level == "Low":
+        return "Low. Treat this as evidence-backed signal, but still read the source and limits."
+    if hype_level == "High":
+        return "High. Interesting, but do not treat the headline as proof until stronger evidence is clear."
+    if source_type == "Company / product update":
+        return "Medium. Useful update, but company/product framing may emphasize the upside."
+    return "Medium. Worth tracking, but the practical impact is not settled yet."
+
+
+def build_practical_takeaway(article: Article, source_type: str) -> str:
+    if article.topic == "Brain Research":
+        return "Useful to track as an early signal for brain health, cognition, sleep, or diagnosis, not as immediate medical advice."
+    if article.topic == "Longevity":
+        return "File it under healthspan evidence; wait for human validation before changing habits or supplements."
+    if article.topic == "WHOOP & Wearables":
+        if source_type == "Older scientific evidence":
+            return "This is a calibration point for what WHOOP-style metrics can and cannot prove."
+        return "Useful if it improves how you interpret sleep, HRV, recovery, respiratory rate, or wearable accuracy."
+    if article.topic == "AI & ChatGPT":
+        return "Watch whether this changes real tools, model access, safety, or daily workflows."
+    return "Useful context, but read the source before treating it as a decision signal."
+
+
+def annotate_article(article: Article) -> Article:
+    article.source_type = article.source_type or classify_source_type(article)
+    article.hype_level = article.hype_level or estimate_hype_level(article, article.source_type)
+    article.hype_filter = article.hype_filter or build_hype_filter(article, article.source_type, article.hype_level)
+    article.practical_takeaway = article.practical_takeaway or build_practical_takeaway(article, article.source_type)
+    return article
 
 
 def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | None = None) -> tuple[list[Article], list[str]]:
@@ -1073,7 +1155,7 @@ def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | N
         if topic["name"] == "WHOOP & Wearables" and picked == 0:
             fallback = whoop_science_fallback(run_date, excluded_keys, seen)
             if fallback:
-                selected.append(fallback)
+                selected.append(annotate_article(fallback))
                 errors.append("Used an evergreen WHOOP scientific validation item because no stronger fresh WHOOP update was selected.")
 
     if skipped_existing:
@@ -1099,6 +1181,107 @@ def select_book_recommendations(run_date: date, count: int = 3) -> list[BookReco
             )
         )
     return recommendations
+
+
+def build_daily_highlights(articles: list[Article]) -> list[DigestNote]:
+    notes = []
+    for article in sorted(articles, key=lambda item: item.score, reverse=True)[:3]:
+        notes.append(
+            DigestNote(
+                title=article.title,
+                detail=f"{article.topic}: {article.practical_takeaway}",
+                topic=article.topic,
+                url=article.url,
+            )
+        )
+    return notes
+
+
+def select_whoop_evidence(articles: list[Article]) -> DigestNote | None:
+    candidates = [article for article in articles if article.topic == "WHOOP & Wearables"]
+    if not candidates:
+        return None
+    article = sorted(candidates, key=lambda item: (item.read_status == "evergreen-scientific-fallback", item.score), reverse=True)[0]
+    return DigestNote(
+        title=article.title,
+        detail=f"{article.source_type}. {article.practical_takeaway}",
+        topic=article.topic,
+        url=article.url,
+    )
+
+
+def select_save_for_later(articles: list[Article]) -> list[DigestNote]:
+    selected: list[DigestNote] = []
+    sorted_articles = sorted(
+        articles,
+        key=lambda item: (
+            item.source_type in {"Peer-reviewed / scientific source", "Older scientific evidence", "Research report"},
+            item.score,
+        ),
+        reverse=True,
+    )
+    for article in sorted_articles:
+        if len(selected) >= 3:
+            break
+        selected.append(
+            DigestNote(
+                title=article.title,
+                detail=f"Longer read: {article.source_type}. Best saved if you want to inspect the source carefully.",
+                topic=article.topic,
+                url=article.url,
+            )
+        )
+    return selected
+
+
+def build_weekly_summary(run_date: date, articles: list[Article]) -> list[DigestNote]:
+    if run_date.weekday() != 6:
+        return []
+
+    notes: list[DigestNote] = []
+    for topic in TOPIC_NAMES:
+        topic_articles = [article for article in articles if article.topic == topic]
+        if not topic_articles:
+            continue
+        lead = max(topic_articles, key=lambda article: article.score)
+        notes.append(
+            DigestNote(
+                title=f"{topic}: {lead.title}",
+                detail=lead.practical_takeaway,
+                topic=topic,
+                url=lead.url,
+            )
+        )
+        if len(notes) >= 5:
+            break
+    return notes
+
+
+TOPIC_NAMES = [topic["name"] for topic in TOPICS]
+
+
+def build_cover_theme(articles: list[Article]) -> dict[str, str]:
+    if not articles:
+        return {
+            "topic": "Morning briefing",
+            "label": "Balanced edition",
+            "detail": "A quiet morning scan across AI, brain research, longevity and wearables.",
+        }
+    scores: dict[str, int] = {}
+    for article in articles:
+        scores[article.topic] = scores.get(article.topic, 0) + max(article.score, 1)
+    topic = max(scores.items(), key=lambda item: item[1])[0]
+    details = {
+        "Brain Research": "Brain signals, cognition, diagnosis and nervous-system research lead today's edition.",
+        "Longevity": "Healthspan, aging biology and prevention signals lead today's edition.",
+        "WHOOP & Wearables": "Wearable physiology, sleep, HRV, recovery and measurement evidence lead today's edition.",
+        "AI & ChatGPT": "AI tools, model access, safety and workflow changes lead today's edition.",
+    }
+    return {
+        "topic": topic,
+        "label": f"Cover theme: {topic}",
+        "detail": details.get(topic, "A balanced edition across your main topics."),
+    }
 
 
 def html_escape(text: str) -> str:
@@ -1133,6 +1316,11 @@ def render_html(
     output_dir: Path,
     articles: list[Article],
     books: list[BookRecommendation],
+    daily_highlights: list[DigestNote],
+    save_for_later: list[DigestNote],
+    weekly_summary: list[DigestNote],
+    whoop_evidence: DigestNote | None,
+    cover_theme: dict[str, str],
     run_date: date,
     generated_at: datetime,
     timezone_name: str,
@@ -1142,6 +1330,75 @@ def render_html(
     generated_time = generated_at.strftime("%H:%M")
     generated_date = generated_at.strftime("%Y-%m-%d")
     assets_rel = f"assets/{COVER_IMAGE.name}" if COVER_IMAGE.exists() else ""
+    highlight_cards = "".join(
+        f"""
+        <article class="note-card">
+          <span>{html_escape(note.topic or "Signal")}</span>
+          <h3>{html_escape(note.title)}</h3>
+          <p>{html_escape(note.detail)}</p>
+          <a href="{html_escape(note.url)}" target="_blank" rel="noreferrer">Source</a>
+        </article>
+        """
+        for note in daily_highlights
+    )
+    save_cards = "".join(
+        f"""
+        <article class="note-card">
+          <span>{html_escape(note.topic or "Later")}</span>
+          <h3>{html_escape(note.title)}</h3>
+          <p>{html_escape(note.detail)}</p>
+          <a href="{html_escape(note.url)}" target="_blank" rel="noreferrer">Save source</a>
+        </article>
+        """
+        for note in save_for_later
+    )
+    weekly_cards = "".join(
+        f"""
+        <article class="note-card">
+          <span>{html_escape(note.topic or "Week")}</span>
+          <h3>{html_escape(note.title)}</h3>
+          <p>{html_escape(note.detail)}</p>
+        </article>
+        """
+        for note in weekly_summary
+    )
+    whoop_card = ""
+    if whoop_evidence:
+        whoop_card = f"""
+        <section class="note-section">
+          <h2>WHOOP evidence corner</h2>
+          <article class="note-card">
+            <span>{html_escape(whoop_evidence.topic)}</span>
+            <h3>{html_escape(whoop_evidence.title)}</h3>
+            <p>{html_escape(whoop_evidence.detail)}</p>
+            <a href="{html_escape(whoop_evidence.url)}" target="_blank" rel="noreferrer">Read evidence</a>
+          </article>
+        </section>
+        """
+    highlights_section = ""
+    if highlight_cards:
+        highlights_section = f"""
+        <section class="note-section">
+          <h2>Kas pasikeitė nuo vakar</h2>
+          <div class="note-grid">{highlight_cards}</div>
+        </section>
+        """
+    save_section = ""
+    if save_cards:
+        save_section = f"""
+        <section class="note-section">
+          <h2>Save for later</h2>
+          <div class="note-grid">{save_cards}</div>
+        </section>
+        """
+    weekly_section = ""
+    if weekly_cards:
+        weekly_section = f"""
+        <section class="note-section">
+          <h2>Savaitinis signalas</h2>
+          <div class="note-grid">{weekly_cards}</div>
+        </section>
+        """
     cards = []
     current_topic = ""
     for idx, article in enumerate(articles, 1):
@@ -1159,9 +1416,17 @@ def render_html(
                 <span>{html_escape(iso_to_local(article.published, timezone_name))}</span>
               </div>
               <h3>{html_escape(article.title)}</h3>
+              <div class="story-tags">
+                <span>{html_escape(article.source_type)}</span>
+                <span>Hype: {html_escape(article.hype_level)}</span>
+              </div>
               <p>{html_escape(article.summary_en)}</p>
               <h4>Lietuviškai</h4>
               <p>{html_escape(article.summary_lt)}</p>
+              <div class="story-insight">
+                <p><b>Praktiškai:</b> {html_escape(article.practical_takeaway)}</p>
+                <p><b>Hype filtras:</b> {html_escape(article.hype_filter)}</p>
+              </div>
               <a href="{html_escape(article.url)}" target="_blank" rel="noreferrer">Read source</a>
             </article>
             """
@@ -1309,6 +1574,52 @@ def render_html(
       padding: 22px 0;
       border-bottom: 1px solid var(--line);
     }}
+    .note-section {{
+      margin: 22px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.42);
+    }}
+    .note-section h2 {{
+      margin: 0 0 12px;
+      color: var(--ink);
+      font-size: 1.25rem;
+    }}
+    .note-grid {{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }}
+    .note-card {{
+      display: grid;
+      gap: 7px;
+      padding: 13px;
+      border: 1px solid #d8caae;
+      background: rgba(255,250,240,.8);
+    }}
+    .note-card span {{
+      color: var(--gold);
+      font-size: .76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }}
+    .note-card h3 {{
+      margin: 0;
+      color: var(--ink);
+      font-size: 1rem;
+      line-height: 1.22;
+    }}
+    .note-card p {{
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }}
+    .note-card a {{
+      color: #1f4d78;
+      font-size: .86rem;
+      font-weight: 700;
+      text-decoration: none;
+    }}
     .story-meta {{
       display: flex;
       flex-wrap: wrap;
@@ -1330,7 +1641,29 @@ def render_html(
       color: #31446c;
       font-size: 0.92rem;
     }}
+    .story-tags {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 10px;
+    }}
+    .story-tags span {{
+      padding: 5px 8px;
+      border: 1px solid #c9d4e2;
+      color: #31446c;
+      background: var(--blue);
+      font-size: .78rem;
+      font-weight: 700;
+    }}
     .story p {{ max-width: 790px; margin: 0 0 12px; }}
+    .story-insight {{
+      max-width: 790px;
+      margin: 12px 0;
+      padding: 12px;
+      border-left: 3px solid var(--gold);
+      background: rgba(255,255,255,.36);
+    }}
+    .story-insight p {{ margin: 0 0 6px; }}
     .story a {{
       color: #1f4d78;
       font-weight: 700;
@@ -1364,6 +1697,7 @@ def render_html(
       .hero {{ min-height: 58vh; }}
       .intro {{ grid-template-columns: 1fr; }}
       .stats {{ grid-template-columns: 1fr; }}
+      .note-grid {{ grid-template-columns: 1fr; }}
       .hero-inner {{ padding: 42px 0 34px; }}
     }}
   </style>
@@ -1373,7 +1707,7 @@ def render_html(
     <div class="hero-inner">
       <p class="kicker">Personal daily edition</p>
       <h1>MORNING MAGAZINE</h1>
-      <p class="deck">Brain research, longevity, WHOOP, AI, ChatGPT and immersive book recommendations - {html_escape(format_date_en(run_date))}</p>
+      <p class="deck">{html_escape(cover_theme.get("label", "Balanced edition"))}. {html_escape(cover_theme.get("detail", ""))} - {html_escape(format_date_en(run_date))}</p>
       <a class="download" href="{html_escape(pdf_name)}">Download PDF</a>
     </div>
   </section>
@@ -1387,7 +1721,11 @@ def render_html(
         <div class="stat"><b>{html_escape(generated_time)}</b><span>updated {html_escape(generated_date)} {html_escape(timezone_name)}</span></div>
       </div>
     </section>
+    {highlights_section}
+    {whoop_card}
     {''.join(cards)}
+    {save_section}
+    {weekly_section}
     <section class="book-section">
       <h2 class="section-title">Book Recommendation</h2>
       {''.join(book_cards)}
@@ -1463,6 +1801,7 @@ def make_styles(fonts: tuple[str, str, str]):
     styles.add(ParagraphStyle("Body", parent=styles["Normal"], fontName=regular, fontSize=9.8, leading=13.8, textColor=colors.HexColor("#20242A"), alignment=TA_JUSTIFY, spaceAfter=7))
     styles.add(ParagraphStyle("Lithuanian", parent=styles["Normal"], fontName=regular, fontSize=9.4, leading=13.4, textColor=colors.HexColor("#2E3C5E"), alignment=TA_JUSTIFY, spaceAfter=7))
     styles.add(ParagraphStyle("Source", parent=styles["Normal"], fontName=regular, fontSize=8.3, leading=10.6, textColor=MUTED, spaceAfter=2))
+    styles.add(ParagraphStyle("Insight", parent=styles["Normal"], fontName=regular, fontSize=8.8, leading=11.8, textColor=colors.HexColor("#31446C"), leftIndent=7, spaceBefore=3, spaceAfter=4))
     styles.add(ParagraphStyle("Small", parent=styles["Normal"], fontName=regular, fontSize=8.2, leading=10.4, textColor=MUTED, alignment=TA_CENTER))
     styles.add(ParagraphStyle("IndexItem", parent=styles["Normal"], fontName=regular, fontSize=9.2, leading=12.2, textColor=INK))
     return styles
@@ -1487,12 +1826,61 @@ def article_block(article: Article, timezone_name: str, styles):
                 ],
             ),
             Paragraph(html_escape(article.title), styles["Headline"]),
+            Paragraph(
+                f"<b>Source type:</b> {html_escape(article.source_type)} &nbsp; <b>Hype:</b> {html_escape(article.hype_level)}",
+                styles["Source"],
+            ),
             Paragraph(html_escape(article.summary_en), styles["Body"]),
             Paragraph("<b>Lietuviškai</b>", styles["Source"]),
             Paragraph(html_escape(article.summary_lt), styles["Lithuanian"]),
+            Paragraph(f"<b>Praktiškai:</b> {html_escape(article.practical_takeaway)}", styles["Insight"]),
+            Paragraph(f"<b>Hype filtras:</b> {html_escape(article.hype_filter)}", styles["Insight"]),
             Paragraph(f"Source: {source}", styles["Source"]),
         ]
     )
+
+
+def notes_block(title: str, notes: list[DigestNote], styles):
+    if not notes:
+        return []
+    rows = []
+    for note in notes:
+        link = source_link("Source", note.url) if note.url else ""
+        rows.append(
+            [
+                Paragraph(html_escape(note.topic or "Signal"), styles["SectionLabel"]),
+                Paragraph(
+                    f"<b>{html_escape(note.title)}</b><br/>{html_escape(note.detail)}"
+                    + (f"<br/>{link}" if link else ""),
+                    styles["IndexItem"],
+                ),
+            ]
+        )
+    table = Table(rows, colWidths=[34 * mm, CONTENT_W - 34 * mm])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFFAF0")),
+                ("BOX", (0, 0), (-1, -1), 0.35, RULE),
+                ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#E2D6BD")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    return [
+        Spacer(1, 8),
+        KeepTogether(
+            [
+                Paragraph(title, styles["SectionTitle"]),
+                table,
+            ]
+        ),
+        Spacer(1, 8),
+    ]
 
 
 def book_block(book: BookRecommendation, styles):
@@ -1520,6 +1908,11 @@ def build_pdf(
     output_dir: Path,
     articles: list[Article],
     books: list[BookRecommendation],
+    daily_highlights: list[DigestNote],
+    save_for_later: list[DigestNote],
+    weekly_summary: list[DigestNote],
+    whoop_evidence: DigestNote | None,
+    cover_theme: dict[str, str],
     run_date: date,
     generated_at: datetime,
     timezone_name: str,
@@ -1553,6 +1946,12 @@ def build_pdf(
     story = []
     story.append(Paragraph("PERSONAL DAILY EDITION", styles["Kicker"]))
     story.append(Paragraph("MORNING MAGAZINE", styles["Masthead"]))
+    story.append(
+        Paragraph(
+            f"{html_escape(cover_theme.get('label', 'Balanced edition'))}. {html_escape(cover_theme.get('detail', ''))}",
+            styles["Deck"],
+        )
+    )
     story.append(Paragraph(f"English summaries with Lietuviškai translations | {html_escape(format_date_en(run_date))}", styles["Deck"]))
 
     if COVER_IMAGE.exists():
@@ -1560,7 +1959,7 @@ def build_pdf(
         img.hAlign = "CENTER"
         story.append(img)
         story.append(Spacer(1, 3))
-        story.append(Paragraph("AI, brain research, healthspan and a morning reading ritual.", styles["Small"]))
+        story.append(Paragraph(html_escape(cover_theme.get("detail", "AI, brain research, healthspan and a morning reading ritual.")), styles["Small"]))
         story.append(Spacer(1, 12))
 
     story.append(
@@ -1597,6 +1996,12 @@ def build_pdf(
     )
     story.append(stats)
     story.append(Spacer(1, 10))
+
+    story.extend(notes_block("Kas pasikeitė nuo vakar", daily_highlights, styles))
+    if whoop_evidence:
+        story.extend(notes_block("WHOOP evidence corner", [whoop_evidence], styles))
+    story.extend(notes_block("Save for later", save_for_later, styles))
+    story.extend(notes_block("Savaitinis signalas", weekly_summary, styles))
 
     if articles:
         index_rows = []
@@ -1650,6 +2055,11 @@ def write_data(
     output_dir: Path,
     articles: list[Article],
     books: list[BookRecommendation],
+    daily_highlights: list[DigestNote],
+    save_for_later: list[DigestNote],
+    weekly_summary: list[DigestNote],
+    whoop_evidence: DigestNote | None,
+    cover_theme: dict[str, str],
     errors: list[str],
     run_date: date,
     generated_at: datetime,
@@ -1664,6 +2074,11 @@ def write_data(
         "summary_engine": "openai" if os.getenv("OPENAI_API_KEY") else "extractive-fallback",
         "articles": [asdict(article) for article in articles],
         "book_recommendations": [asdict(book) for book in books],
+        "daily_highlights": [asdict(note) for note in daily_highlights],
+        "save_for_later": [asdict(note) for note in save_for_later],
+        "weekly_summary": [asdict(note) for note in weekly_summary],
+        "whoop_evidence": asdict(whoop_evidence) if whoop_evidence else None,
+        "cover_theme": cover_theme,
         "feed_errors": errors,
     }
     (output_dir / "ryto-signalas.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1691,11 +2106,56 @@ def main() -> None:
     prepare_output_dir(output_dir)
     articles, errors = collect_articles(run_date, per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
     books = select_book_recommendations(run_date, count=args.book_count)
+    daily_highlights = build_daily_highlights(articles)
+    save_for_later = select_save_for_later(articles)
+    weekly_summary = build_weekly_summary(run_date, articles)
+    whoop_evidence = select_whoop_evidence(articles)
+    cover_theme = build_cover_theme(articles)
     pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
-    render_html(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name, errors)
-    build_pdf(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name)
+    render_html(
+        output_dir,
+        articles,
+        books,
+        daily_highlights,
+        save_for_later,
+        weekly_summary,
+        whoop_evidence,
+        cover_theme,
+        run_date,
+        generated_at,
+        timezone_name,
+        pdf_name,
+        errors,
+    )
+    build_pdf(
+        output_dir,
+        articles,
+        books,
+        daily_highlights,
+        save_for_later,
+        weekly_summary,
+        whoop_evidence,
+        cover_theme,
+        run_date,
+        generated_at,
+        timezone_name,
+        pdf_name,
+    )
     shutil.copy2(output_dir / pdf_name, output_dir / "latest.pdf")
-    write_data(output_dir, articles, books, errors, run_date, generated_at, timezone_name)
+    write_data(
+        output_dir,
+        articles,
+        books,
+        daily_highlights,
+        save_for_later,
+        weekly_summary,
+        whoop_evidence,
+        cover_theme,
+        errors,
+        run_date,
+        generated_at,
+        timezone_name,
+    )
 
     print(f"Generated {output_dir / 'index.html'}")
     print(f"Generated {output_dir / pdf_name}")

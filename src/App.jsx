@@ -31,6 +31,11 @@ const FALLBACK_DIGEST = {
   timezone: "Europe/London",
   language: "en-lt",
   summary_engine: "demo",
+  cover_theme: {
+    topic: "Balanced edition",
+    label: "Cover theme: AI, brain and healthspan",
+    detail: "A compact morning scan across AI tools, brain health, longevity and wearable evidence."
+  },
   articles: [
     {
       topic: "Brain Research",
@@ -121,6 +126,41 @@ const FALLBACK_DIGEST = {
       search_url: "https://www.google.com/search?q=Lonesome+Dove+Larry+McMurtry+book"
     }
   ],
+  daily_highlights: [
+    {
+      title: "Brain health signals are becoming more measurable",
+      detail: "Brain Research: useful as an early signal, not as immediate medical advice.",
+      topic: "Brain Research",
+      url: "https://news.google.com/search?q=brain%20research%20biomarker"
+    },
+    {
+      title: "Longevity coverage is shifting toward healthspan evidence",
+      detail: "Longevity: stronger items focus on sleep, muscle, metabolism and prevention.",
+      topic: "Longevity",
+      url: "https://news.google.com/search?q=longevity%20healthspan%20research"
+    },
+    {
+      title: "WHOOP-style metrics need validation, not just feature announcements",
+      detail: "WHOOP & Wearables: useful when sleep, HRV and recovery metrics are interpreted carefully.",
+      topic: "WHOOP & Wearables",
+      url: "https://news.google.com/search?q=WHOOP%20wearable%20medical%20study"
+    }
+  ],
+  save_for_later: [
+    {
+      title: "Wearables are moving closer to medical interpretation",
+      detail: "Longer read: useful if you want to inspect what consumer physiology metrics can prove.",
+      topic: "WHOOP & Wearables",
+      url: "https://news.google.com/search?q=WHOOP%20wearable%20medical%20study"
+    }
+  ],
+  weekly_summary: [],
+  whoop_evidence: {
+    title: "Wearables are moving closer to medical interpretation",
+    detail: "Older scientific evidence. Use this as a calibration point for what WHOOP-style metrics can and cannot prove.",
+    topic: "WHOOP & Wearables",
+    url: "https://news.google.com/search?q=WHOOP%20wearable%20medical%20study"
+  },
   feed_errors: []
 };
 
@@ -273,7 +313,12 @@ function App() {
         setDigest({
           ...data,
           articles: data.articles ?? [],
-          book_recommendations: data.book_recommendations ?? []
+          book_recommendations: data.book_recommendations ?? [],
+          daily_highlights: data.daily_highlights ?? [],
+          save_for_later: data.save_for_later ?? [],
+          weekly_summary: data.weekly_summary ?? [],
+          whoop_evidence: data.whoop_evidence ?? null,
+          cover_theme: data.cover_theme ?? FALLBACK_DIGEST.cover_theme
         });
         setSourceState(data.summary_engine === "openai" ? "Live magazine + AI summaries" : "Live magazine");
       } catch {
@@ -318,6 +363,9 @@ function App() {
           article.summary_lt,
           article.summary,
           article.source,
+          article.source_type,
+          article.hype_filter,
+          article.practical_takeaway,
           article.tag,
           article.topic
         ]
@@ -328,8 +376,15 @@ function App() {
   }, [digest.articles, query, selectedTopic, windowFilter]);
 
   const books = digest.book_recommendations ?? [];
+  const highlights = digest.daily_highlights ?? [];
+  const saveForLater = digest.save_for_later ?? [];
+  const weeklySummary = digest.weekly_summary ?? [];
+  const whoopEvidence = digest.whoop_evidence ?? null;
+  const coverTheme = digest.cover_theme ?? FALLBACK_DIGEST.cover_theme;
+  const topSignals = [...(digest.articles ?? [])]
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 3);
   const lead = articles[0] ?? digest.articles?.[0];
-  const topScore = Math.max(...(digest.articles ?? []).map((article) => article.score ?? 0), 0);
   const sourceHealth = digest.feed_errors?.length ? "Some source issues" : "Sources OK";
   const generatedLabel = formatDate(digest.generated_for, digest.timezone);
   const updatedTime = digest.generated_at ? formatTime(digest.generated_at, digest.timezone) : "--:--";
@@ -406,6 +461,29 @@ function App() {
                 "Important news only, summarized in English with a complete Lithuanian translation under each item."}
             </p>
 
+            <div className="context-strip">
+              <span>
+                <Sparkles size={15} />
+                {coverTheme.label}
+              </span>
+              <p>{coverTheme.detail}</p>
+            </div>
+
+            {topSignals.length > 0 && (
+              <div className="quick-read" aria-label="Quick morning signals">
+                <strong>Greitas rytinis vaizdas</strong>
+                <ol>
+                  {topSignals.map((article) => (
+                    <li key={`quick-${article.url}`}>
+                      <a href={article.url} target="_blank" rel="noreferrer">
+                        {article.title}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
             <div className="signal-stats" aria-label="Magazine metrics">
               <Metric value={digest.articles?.length ?? 0} label="articles" Icon={Newspaper} />
               <Metric value={books.length} label="book picks" Icon={BookOpen} />
@@ -426,6 +504,8 @@ function App() {
             </div>
           </aside>
         </section>
+
+        <NoteSection title="Kas pasikeitė nuo vakar" notes={highlights} Icon={Sparkles} />
 
         <section className="controls-row" aria-label="Filters">
           <div className="topic-tabs">
@@ -491,6 +571,14 @@ function App() {
           </div>
 
           <aside className="right-rail">
+            {whoopEvidence && <WhoopEvidence note={whoopEvidence} />}
+
+            <NoteSection title="Save for later" notes={saveForLater} Icon={FileText} compact />
+
+            {weeklySummary.length > 0 && (
+              <NoteSection title="Savaitinis signalas" notes={weeklySummary} Icon={Activity} compact />
+            )}
+
             <section className="rail-section">
               <div className="section-head">
                 <span>Section pulse</span>
@@ -510,6 +598,54 @@ function App() {
         </section>
       </section>
     </main>
+  );
+}
+
+function NoteSection({ title, notes, Icon, compact = false }) {
+  if (!notes?.length) return null;
+
+  return (
+    <section className={compact ? "note-section compact" : "note-section"} aria-label={title}>
+      <div className="section-head">
+        <span>{title}</span>
+        <Icon size={17} />
+      </div>
+      <div className="note-list">
+        {notes.map((note) => (
+          <article className="note-card" key={`${title}-${note.url}-${note.title}`}>
+            <small>{note.topic || "Signal"}</small>
+            <h3>{note.title}</h3>
+            <p>{note.detail}</p>
+            {note.url && (
+              <a href={note.url} target="_blank" rel="noreferrer">
+                <ExternalLink size={14} />
+                Source
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WhoopEvidence({ note }) {
+  return (
+    <section className="note-section whoop-evidence" aria-label="WHOOP evidence corner">
+      <div className="section-head">
+        <span>WHOOP evidence corner</span>
+        <Watch size={17} />
+      </div>
+      <article className="note-card">
+        <small>{note.topic}</small>
+        <h3>{note.title}</h3>
+        <p>{note.detail}</p>
+        <a href={note.url} target="_blank" rel="noreferrer">
+          <ExternalLink size={14} />
+          Read evidence
+        </a>
+      </article>
+    </section>
   );
 }
 
@@ -538,8 +674,11 @@ function Step({ done, label, detail }) {
 function ArticleCard({ article, index }) {
   const meta = topicMeta[article.topic] ?? topicMeta["AI & ChatGPT"];
   const Icon = meta.Icon;
-  const score = article.score ?? 0;
   const summaryEn = article.summary_en || article.summary;
+  const sourceType = article.source_type || "Source checked";
+  const hypeLevel = article.hype_level || "Low";
+  const practicalTakeaway = article.practical_takeaway || "Read the original source before treating this as a decision signal.";
+  const hypeFilter = article.hype_filter || "Useful signal, but the practical impact is not settled yet.";
 
   return (
     <article className={`article-card magazine-card tone-${meta.color}`}>
@@ -551,6 +690,8 @@ function ArticleCard({ article, index }) {
             {article.tag || article.topic}
           </span>
           <time>{formatTime(article.published)}</time>
+          <span className="source-type-chip">{sourceType}</span>
+          <span className={`hype-chip hype-${hypeLevel.toLowerCase()}`}>Hype {hypeLevel}</span>
         </div>
 
         <h2>{article.title}</h2>
@@ -561,15 +702,20 @@ function ArticleCard({ article, index }) {
           <p>{article.summary_lt || "Vertimas laikinai nepateiktas."}</p>
         </section>
 
+        <section className="insight-block" aria-label="Practical reading notes">
+          <p>
+            <strong>Praktiškai:</strong> {practicalTakeaway}
+          </p>
+          <p>
+            <strong>Hype filtras:</strong> {hypeFilter}
+          </p>
+        </section>
+
         <div className="article-footer">
           <a href={article.url} target="_blank" rel="noreferrer">
             <ExternalLink size={15} />
             {article.source}
           </a>
-          <span className="score-chip">
-            <Zap size={14} />
-            {score}
-          </span>
         </div>
       </div>
       <a className="open-link" href={article.url} target="_blank" rel="noreferrer" aria-label="Open source">

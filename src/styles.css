@@ -78,6 +78,7 @@ a {
 .summary-band,
 .controls-row,
 .rail-section,
+.note-section,
 .article-card,
 .empty-state {
   border: 1px solid var(--line);
@@ -286,6 +287,56 @@ a {
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.55;
+}
+
+.context-strip {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d8caae;
+  border-radius: 8px;
+  padding: 11px;
+  background: #fffaf0;
+}
+
+.context-strip span,
+.quick-read strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--amber);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.context-strip p {
+  font-size: 0.93rem;
+}
+
+.quick-read {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
+  background: var(--surface-soft);
+}
+
+.quick-read ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.quick-read li {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.quick-read a {
+  color: var(--ink);
+  text-decoration: none;
 }
 
 .signal-stats {
@@ -508,6 +559,80 @@ a {
   align-items: start;
 }
 
+.note-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow);
+}
+
+.note-section.compact,
+.right-rail .note-section {
+  box-shadow: var(--shadow);
+}
+
+.note-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.note-section.compact .note-list,
+.right-rail .note-list {
+  grid-template-columns: 1fr;
+}
+
+.note-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e3d2ad;
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 240, 0.88), rgba(255, 255, 255, 0.92)),
+    var(--surface);
+}
+
+.note-card small {
+  color: var(--amber);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.note-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.22;
+  letter-spacing: 0;
+}
+
+.note-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.note-card a {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.whoop-evidence .note-card {
+  border-color: #f0c4b5;
+  background:
+    linear-gradient(135deg, rgba(246, 227, 220, 0.8), rgba(255, 255, 255, 0.94)),
+    var(--surface);
+}
+
 .article-list {
   display: grid;
   gap: 10px;
@@ -574,8 +699,7 @@ a {
 }
 
 .article-meta span,
-.article-footer a,
-.score-chip {
+.article-footer a {
   min-height: 28px;
   display: inline-flex;
   align-items: center;
@@ -588,6 +712,26 @@ a {
 .article-meta span {
   color: var(--cyan);
   font-weight: 700;
+}
+
+.article-meta .source-type-chip {
+  color: #31446c;
+  background: #e8eef5;
+}
+
+.article-meta .hype-chip {
+  color: #36543a;
+  background: #e8f4eb;
+}
+
+.article-meta .hype-medium {
+  color: #805609;
+  background: #fff5dc;
+}
+
+.article-meta .hype-high {
+  color: var(--coral);
+  background: var(--coral-soft);
 }
 
 .tone-violet .article-meta span {
@@ -612,6 +756,26 @@ a {
 
 .tone-cyan .article-meta span {
   background: var(--cyan-soft);
+}
+
+.article-card .article-meta .source-type-chip {
+  color: #31446c;
+  background: #e8eef5;
+}
+
+.article-card .article-meta .hype-chip {
+  color: #36543a;
+  background: #e8f4eb;
+}
+
+.article-card .article-meta .hype-medium {
+  color: #805609;
+  background: #fff5dc;
+}
+
+.article-card .article-meta .hype-high {
+  color: var(--coral);
+  background: var(--coral-soft);
 }
 
 .article-main h2 {
@@ -652,6 +816,24 @@ a {
   color: #3f4d59;
 }
 
+.insight-block {
+  display: grid;
+  gap: 6px;
+  border-left: 3px solid var(--amber);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  background: #fffaf0;
+}
+
+.insight-block p {
+  color: #3f4d59;
+  font-size: 0.92rem;
+}
+
+.insight-block strong {
+  color: var(--ink);
+}
+
 .article-footer {
   justify-content: space-between;
 }
@@ -660,12 +842,6 @@ a {
   max-width: 100%;
   color: var(--ink);
   text-decoration: none;
-}
-
-.score-chip {
-  color: var(--amber);
-  font-weight: 800;
-  background: #fbf0d9;
 }
 
 .open-link {
@@ -944,7 +1120,8 @@ a {
 
   .right-rail,
   .agent-steps,
-  .signal-stats {
+  .signal-stats,
+  .note-list {
     grid-template-columns: 1fr;
   }
 }
