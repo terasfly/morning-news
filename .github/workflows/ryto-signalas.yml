@@ -6,8 +6,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: "17 5 * * *"
-    - cron: "17 6 * * *"
+    - cron: "16 6 * * *"
+    - cron: "16 7 * * *"
 
 permissions:
   contents: read
@@ -41,58 +41,58 @@ jobs:
           PY
 
       - name: Checkout
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         uses: actions/checkout@v4
 
       - name: Set up Python
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install dependencies
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Build newspaper
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python build_ryto_signalas_pdf.py --timezone Europe/London --date "${{ steps.london-time.outputs.date }}"
 
       - name: Set up Node
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
 
       - name: Install frontend dependencies
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         run: npm ci
 
       - name: Build app
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         run: npm run build
 
       - name: Configure Pages
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '06'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.london-time.outputs.hour == '07'
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Skip outside 06:00 Europe/London
-        if: github.event_name == 'schedule' && steps.london-time.outputs.hour != '06'
-        run: echo "Skipped because it is not 06:00 in Europe/London."
+      - name: Skip outside 07:00 Europe/London
+        if: github.event_name == 'schedule' && steps.london-time.outputs.hour != '07'
+        run: echo "Skipped because it is not 07:00 in Europe/London."
