@@ -939,10 +939,13 @@ def render_html(
     articles: list[Article],
     books: list[BookRecommendation],
     run_date: date,
+    generated_at: datetime,
     timezone_name: str,
     pdf_name: str,
     errors: list[str],
 ) -> None:
+    generated_time = generated_at.strftime("%H:%M")
+    generated_date = generated_at.strftime("%Y-%m-%d")
     assets_rel = f"assets/{COVER_IMAGE.name}" if COVER_IMAGE.exists() else ""
     cards = []
     current_topic = ""
@@ -1092,7 +1095,7 @@ def render_html(
     .intro p {{ margin: 0; font-size: 1.03rem; }}
     .stats {{
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
     }}
     .stat {{
@@ -1185,7 +1188,8 @@ def render_html(
       <div class="stats">
         <div class="stat"><b>{len(articles)}</b><span>news articles</span></div>
         <div class="stat"><b>{len(books)}</b><span>book picks</span></div>
-        <div class="stat"><b>06:00</b><span>{html_escape(timezone_name)}</span></div>
+        <div class="stat"><b>07:22</b><span>scheduled {html_escape(timezone_name)}</span></div>
+        <div class="stat"><b>{html_escape(generated_time)}</b><span>updated {html_escape(generated_date)} {html_escape(timezone_name)}</span></div>
       </div>
     </section>
     {''.join(cards)}
@@ -1317,7 +1321,15 @@ def book_block(book: BookRecommendation, styles):
     )
 
 
-def build_pdf(output_dir: Path, articles: list[Article], books: list[BookRecommendation], run_date: date, timezone_name: str, pdf_name: str) -> None:
+def build_pdf(
+    output_dir: Path,
+    articles: list[Article],
+    books: list[BookRecommendation],
+    run_date: date,
+    generated_at: datetime,
+    timezone_name: str,
+    pdf_name: str,
+) -> None:
     fonts = register_fonts()
     styles = make_styles(fonts)
 
@@ -1362,6 +1374,34 @@ def build_pdf(output_dir: Path, articles: list[Article], books: list[BookRecomme
             styles["Lead"],
         )
     )
+    generated_time = generated_at.strftime("%H:%M")
+    stats = Table(
+        [
+            [
+                Paragraph(f"<b>{len(articles)}</b><br/>news articles", styles["IndexItem"]),
+                Paragraph(f"<b>{len(books)}</b><br/>book picks", styles["IndexItem"]),
+                Paragraph("<b>07:22</b><br/>scheduled", styles["IndexItem"]),
+                Paragraph(f"<b>{html_escape(generated_time)}</b><br/>updated {html_escape(timezone_name)}", styles["IndexItem"]),
+            ]
+        ],
+        colWidths=[CONTENT_W / 4] * 4,
+    )
+    stats.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), SOFT_BLUE),
+                ("BOX", (0, 0), (-1, -1), 0.35, colors.HexColor("#C9D4E2")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#DCE4EE")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    story.append(stats)
+    story.append(Spacer(1, 10))
 
     if articles:
         index_rows = []
@@ -1417,11 +1457,13 @@ def write_data(
     books: list[BookRecommendation],
     errors: list[str],
     run_date: date,
+    generated_at: datetime,
     timezone_name: str,
 ) -> None:
     payload = {
         "title": "Morning Magazine",
         "generated_for": run_date.isoformat(),
+        "generated_at": generated_at.isoformat(timespec="seconds"),
         "timezone": timezone_name,
         "language": "en-lt",
         "summary_engine": "openai" if os.getenv("OPENAI_API_KEY") else "extractive-fallback",
@@ -1447,16 +1489,17 @@ def main() -> None:
     timezone_name = args.timezone
     tz = ZoneInfo(timezone_name)
     run_date = date.fromisoformat(args.date) if args.date else datetime.now(tz).date()
+    generated_at = datetime.now(tz).replace(microsecond=0)
     output_dir = Path(args.output_dir).resolve()
 
     prepare_output_dir(output_dir)
     articles, errors = collect_articles(per_topic=max(1, args.per_topic))
     books = select_book_recommendations(run_date, count=args.book_count)
     pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
-    render_html(output_dir, articles, books, run_date, timezone_name, pdf_name, errors)
-    build_pdf(output_dir, articles, books, run_date, timezone_name, pdf_name)
+    render_html(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name, errors)
+    build_pdf(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name)
     shutil.copy2(output_dir / pdf_name, output_dir / "latest.pdf")
-    write_data(output_dir, articles, books, errors, run_date, timezone_name)
+    write_data(output_dir, articles, books, errors, run_date, generated_at, timezone_name)
 
     print(f"Generated {output_dir / 'index.html'}")
     print(f"Generated {output_dir / pdf_name}")

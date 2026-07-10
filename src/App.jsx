@@ -27,6 +27,7 @@ import coverImage from "../rytinis-virselis.png";
 const FALLBACK_DIGEST = {
   title: "Morning Magazine",
   generated_for: new Date().toISOString().slice(0, 10),
+  generated_at: new Date().toISOString(),
   timezone: "Europe/London",
   language: "en-lt",
   summary_engine: "demo",
@@ -331,6 +332,8 @@ function App() {
   const topScore = Math.max(...(digest.articles ?? []).map((article) => article.score ?? 0), 0);
   const sourceHealth = digest.feed_errors?.length ? "Some source issues" : "Sources OK";
   const generatedLabel = formatDate(digest.generated_for, digest.timezone);
+  const updatedTime = digest.generated_at ? formatTime(digest.generated_at, digest.timezone) : "--:--";
+  const updatedDate = digest.generated_at ? formatDate(digest.generated_at, digest.timezone) : "update time unavailable";
   const copiedLabel = copied ? "Copied" : "Copy";
 
   async function handleCopy() {
@@ -391,6 +394,10 @@ function App() {
                 <CalendarClock size={14} />
                 {generatedLabel}
               </span>
+              <span className="updated-pill">
+                <RefreshCw size={14} />
+                Updated {updatedTime}
+              </span>
             </div>
 
             <h1>{lead?.title ?? "Your personal Morning Magazine"}</h1>
@@ -402,7 +409,8 @@ function App() {
             <div className="signal-stats" aria-label="Magazine metrics">
               <Metric value={digest.articles?.length ?? 0} label="articles" Icon={Newspaper} />
               <Metric value={books.length} label="book picks" Icon={BookOpen} />
-              <Metric value="06:00" label={digest.timezone} Icon={TimerReset} />
+              <Metric value="07:22" label={`scheduled ${digest.timezone}`} Icon={TimerReset} />
+              <Metric value={updatedTime} label={`updated ${updatedDate}`} Icon={RefreshCw} />
             </div>
           </div>
 

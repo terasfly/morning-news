@@ -261,6 +261,13 @@ a {
   background: #eef8f0;
 }
 
+.updated-pill {
+  color: var(--ink);
+  border-color: #d4b36d;
+  background: #fff5dc;
+  font-weight: 800;
+}
+
 .status-pill.loading svg {
   animation: spin 1s linear infinite;
 }
@@ -283,7 +290,7 @@ a {
 
 .signal-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 150px));
+  grid-template-columns: repeat(4, minmax(0, 150px));
   gap: 8px;
 }
 
