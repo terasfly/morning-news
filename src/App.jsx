@@ -409,7 +409,7 @@ function App() {
             <div className="signal-stats" aria-label="Magazine metrics">
               <Metric value={digest.articles?.length ?? 0} label="articles" Icon={Newspaper} />
               <Metric value={books.length} label="book picks" Icon={BookOpen} />
-              <Metric value="07:22" label={`scheduled ${digest.timezone}`} Icon={TimerReset} />
+              <Metric value="08:05" label={`scheduled ${digest.timezone}`} Icon={TimerReset} />
               <Metric value={updatedTime} label={`updated ${updatedDate}`} Icon={RefreshCw} />
             </div>
           </div>

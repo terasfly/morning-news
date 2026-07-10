@@ -59,6 +59,10 @@ SOFT_GREEN = colors.HexColor("#E7F0EA")
 GOLD = colors.HexColor("#B7853B")
 
 USER_AGENT = "MorningMagazine/2.0 (+https://github.com/terasfly/morning-news)"
+PUBLISHED_DATA_URL = os.getenv(
+    "PUBLISHED_DATA_URL",
+    "https://terasfly.github.io/morning-news/ryto-signalas.json",
+)
 
 
 TOPICS: list[dict[str, Any]] = [
@@ -507,6 +511,44 @@ def fetch_url(url: str, timeout: int = 25) -> bytes:
         return response.read()
 
 
+def article_keys(url: str | None, title: str | None) -> set[str]:
+    keys: set[str] = set()
+    if url:
+        keys.add(url.split("?", 1)[0].rstrip("/").lower())
+    if title:
+        keys.add(re.sub(r"\W+", "", title.lower())[:80])
+    return {key for key in keys if key}
+
+
+def load_previous_article_keys(output_dir: Path, run_date: date) -> set[str]:
+    keys: set[str] = set()
+    payloads: list[dict[str, Any]] = []
+    local_json = output_dir / "ryto-signalas.json"
+
+    if local_json.exists():
+        try:
+            payloads.append(json.loads(local_json.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    try:
+        cache_bust = int(datetime.now(timezone.utc).timestamp())
+        remote_data = fetch_url(f"{PUBLISHED_DATA_URL}?t={cache_bust}", timeout=12)
+        payloads.append(json.loads(remote_data.decode("utf-8")))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+        pass
+
+    for payload in payloads:
+        if payload.get("generated_for") != run_date.isoformat():
+            continue
+        for item in payload.get("articles", []):
+            if not isinstance(item, dict):
+                continue
+            keys.update(article_keys(item.get("url"), item.get("title")))
+
+    return keys
+
+
 def parse_feed(data: bytes, fallback_source: str, topic: dict[str, Any]) -> list[Article]:
     root = ET.fromstring(sanitize_xml(data))
     entries: list[Article] = []
@@ -847,10 +889,12 @@ def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
     return True
 
 
-def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
+def collect_articles(per_topic: int, excluded_keys: set[str] | None = None) -> tuple[list[Article], list[str]]:
     selected: list[Article] = []
     errors: list[str] = []
     seen: set[str] = set()
+    excluded_keys = excluded_keys or set()
+    skipped_existing = 0
 
     for topic in TOPICS:
         candidates: list[Article] = []
@@ -865,9 +909,11 @@ def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
         picked = 0
         checked = 0
         for article in ranked:
-            identity = article.url.split("?", 1)[0].rstrip("/") or article.title.lower()
-            title_key = re.sub(r"\W+", "", article.title.lower())[:80]
-            if identity in seen or title_key in seen:
+            keys = article_keys(article.url, article.title)
+            if keys & seen:
+                continue
+            if keys & excluded_keys:
+                skipped_existing += 1
                 continue
             checked += 1
             enriched = enrich_article(article, topic)
@@ -875,14 +921,16 @@ def collect_articles(per_topic: int) -> tuple[list[Article], list[str]]:
                 if checked >= 10:
                     break
                 continue
-            seen.add(identity)
-            seen.add(title_key)
+            seen.update(keys)
             selected.append(enriched)
             picked += 1
             if picked >= per_topic:
                 break
             if checked >= 10:
                 break
+
+    if skipped_existing:
+        errors.append(f"Skipped {skipped_existing} articles already shown in today's published edition.")
 
     return selected, errors
 
@@ -1188,7 +1236,7 @@ def render_html(
       <div class="stats">
         <div class="stat"><b>{len(articles)}</b><span>news articles</span></div>
         <div class="stat"><b>{len(books)}</b><span>book picks</span></div>
-        <div class="stat"><b>07:22</b><span>scheduled {html_escape(timezone_name)}</span></div>
+        <div class="stat"><b>08:05</b><span>scheduled {html_escape(timezone_name)}</span></div>
         <div class="stat"><b>{html_escape(generated_time)}</b><span>updated {html_escape(generated_date)} {html_escape(timezone_name)}</span></div>
       </div>
     </section>
@@ -1380,7 +1428,7 @@ def build_pdf(
             [
                 Paragraph(f"<b>{len(articles)}</b><br/>news articles", styles["IndexItem"]),
                 Paragraph(f"<b>{len(books)}</b><br/>book picks", styles["IndexItem"]),
-                Paragraph("<b>07:22</b><br/>scheduled", styles["IndexItem"]),
+                Paragraph("<b>08:05</b><br/>scheduled", styles["IndexItem"]),
                 Paragraph(f"<b>{html_escape(generated_time)}</b><br/>updated {html_escape(timezone_name)}", styles["IndexItem"]),
             ]
         ],
@@ -1491,9 +1539,10 @@ def main() -> None:
     run_date = date.fromisoformat(args.date) if args.date else datetime.now(tz).date()
     generated_at = datetime.now(tz).replace(microsecond=0)
     output_dir = Path(args.output_dir).resolve()
+    excluded_article_keys = load_previous_article_keys(output_dir, run_date)
 
     prepare_output_dir(output_dir)
-    articles, errors = collect_articles(per_topic=max(1, args.per_topic))
+    articles, errors = collect_articles(per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
     books = select_book_recommendations(run_date, count=args.book_count)
     pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
     render_html(output_dir, articles, books, run_date, generated_at, timezone_name, pdf_name, errors)
