@@ -3,6 +3,7 @@ __pycache__/
 public/
 node_modules/
 dist/
+tmp/
 *.log
 *.pdf
 build_ryto_signalas_2026_*.py

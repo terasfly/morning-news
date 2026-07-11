@@ -10,8 +10,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import asdict, dataclass, replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,7 @@ PUBLISHED_DATA_URL = os.getenv(
 )
 PUBLISHED_SITE_URL = os.getenv("PUBLISHED_SITE_URL", "https://terasfly.github.io/morning-news").rstrip("/")
 ARCHIVE_INDEX_URL = f"{PUBLISHED_SITE_URL}/archive/index.json"
+NEWS_WINDOW_START_HOUR = 18
 
 
 TOPICS: list[dict[str, Any]] = [
@@ -73,6 +75,7 @@ TOPICS: list[dict[str, Any]] = [
         "tag": "Brain research",
         "description": "Neuroscience, cognition, memory, biomarkers, sleep, and brain health.",
         "min_score": 36,
+        "strict_fresh": True,
         "keywords": [
             "brain",
             "neuroscience",
@@ -104,6 +107,7 @@ TOPICS: list[dict[str, Any]] = [
         "tag": "Longevity",
         "description": "Healthspan, aging biology, prevention, metabolism, exercise, and sleep.",
         "min_score": 36,
+        "strict_fresh": True,
         "keywords": [
             "longevity",
             "healthspan",
@@ -169,6 +173,7 @@ TOPICS: list[dict[str, Any]] = [
         "tag": "AI and ChatGPT",
         "description": "Official OpenAI updates, ChatGPT releases, agents, models, and AI product shifts.",
         "min_score": 36,
+        "strict_fresh": True,
         "keywords": [
             "ai",
             "artificial intelligence",
@@ -937,6 +942,31 @@ def parse_datetime(value: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def news_window(run_date: date, generated_at: datetime, timezone_name: str) -> tuple[datetime, datetime]:
+    tz = ZoneInfo(timezone_name)
+    local_end = generated_at.astimezone(tz) if generated_at.tzinfo else generated_at.replace(tzinfo=tz)
+    if local_end.date() != run_date:
+        local_end = datetime.combine(run_date, time(10, 0), tzinfo=tz)
+    local_start = datetime.combine(run_date - timedelta(days=1), time(NEWS_WINDOW_START_HOUR, 0), tzinfo=tz)
+    return local_start.astimezone(timezone.utc), local_end.astimezone(timezone.utc)
+
+
+def article_published_utc(article: Article) -> datetime | None:
+    return parse_datetime(article.published)
+
+
+def article_is_in_window(article: Article, start_utc: datetime, end_utc: datetime) -> bool:
+    published = article_published_utc(article)
+    return bool(published and start_utc <= published <= end_utc)
+
+
+def format_window_for_log(start_utc: datetime, end_utc: datetime, timezone_name: str) -> str:
+    tz = ZoneInfo(timezone_name)
+    start = start_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+    end = end_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+    return f"{start} to {end} {timezone_name}"
+
+
 def fetch_url(url: str, timeout: int = 25) -> bytes:
     request = urllib.request.Request(
         url,
@@ -982,6 +1012,10 @@ def restore_published_archive(output_dir: Path) -> None:
                 entry.get("pdf") or f"archive/{edition_date}/morning-magazine-{edition_date}.pdf",
                 edition_dir / f"morning-magazine-{edition_date}.pdf",
             ),
+            (
+                entry.get("epub") or f"archive/{edition_date}/morning-magazine-{edition_date}.epub",
+                edition_dir / f"morning-magazine-{edition_date}.epub",
+            ),
             (entry.get("html") or f"archive/{edition_date}/index.html", edition_dir / "index.html"),
         ]
         for relative_url, destination in downloads:
@@ -1007,16 +1041,18 @@ def build_archive_index(output_dir: Path, generated_at: datetime) -> None:
         except (json.JSONDecodeError, OSError):
             payload = {}
         pdf_name = f"morning-magazine-{edition_date}.pdf"
-        editions.append(
-            {
-                "date": edition_date,
-                "label": format_date_en(date.fromisoformat(edition_date)),
-                "generated_at": payload.get("generated_at", ""),
-                "json": f"archive/{edition_date}/ryto-signalas.json",
-                "pdf": f"archive/{edition_date}/{pdf_name}",
-                "html": f"archive/{edition_date}/index.html",
-            }
-        )
+        epub_name = f"morning-magazine-{edition_date}.epub"
+        entry = {
+            "date": edition_date,
+            "label": format_date_en(date.fromisoformat(edition_date)),
+            "generated_at": payload.get("generated_at", ""),
+            "json": f"archive/{edition_date}/ryto-signalas.json",
+            "pdf": f"archive/{edition_date}/{pdf_name}",
+            "html": f"archive/{edition_date}/index.html",
+        }
+        if (path.parent / epub_name).exists():
+            entry["epub"] = f"archive/{edition_date}/{epub_name}"
+        editions.append(entry)
 
     payload = {
         "title": "Morning Magazine Archive",
@@ -1026,13 +1062,14 @@ def build_archive_index(output_dir: Path, generated_at: datetime) -> None:
     (archive_dir / "index.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def archive_current_edition(output_dir: Path, run_date: date, pdf_name: str, generated_at: datetime) -> None:
+def archive_current_edition(output_dir: Path, run_date: date, pdf_name: str, epub_name: str, generated_at: datetime) -> None:
     edition_date = run_date.isoformat()
     edition_dir = output_dir / "archive" / edition_date
     edition_dir.mkdir(parents=True, exist_ok=True)
     files = [
         (output_dir / "ryto-signalas.json", edition_dir / "ryto-signalas.json"),
         (output_dir / pdf_name, edition_dir / pdf_name),
+        (output_dir / epub_name, edition_dir / epub_name),
         (output_dir / "index.html", edition_dir / "index.html"),
     ]
     for source, destination in files:
@@ -1501,12 +1538,19 @@ def annotate_article(article: Article) -> Article:
     return article
 
 
-def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | None = None) -> tuple[list[Article], list[str]]:
+def collect_articles(
+    run_date: date,
+    generated_at: datetime,
+    timezone_name: str,
+    per_topic: int,
+    excluded_keys: set[str] | None = None,
+) -> tuple[list[Article], list[str]]:
     selected: list[Article] = []
     errors: list[str] = []
     seen: set[str] = set()
     excluded_keys = excluded_keys or set()
     skipped_existing = 0
+    window_start_utc, window_end_utc = news_window(run_date, generated_at, timezone_name)
 
     for topic in TOPICS:
         candidates: list[Article] = []
@@ -1516,6 +1560,16 @@ def collect_articles(run_date: date, per_topic: int, excluded_keys: set[str] | N
                 candidates.extend(parse_feed(feed, source, topic))
             except (urllib.error.URLError, TimeoutError, ET.ParseError, ValueError, OSError) as exc:
                 errors.append(f"{source}: {exc}")
+
+        if topic.get("strict_fresh"):
+            original_count = len(candidates)
+            candidates = [article for article in candidates if article_is_in_window(article, window_start_utc, window_end_utc)]
+            skipped_stale = original_count - len(candidates)
+            if skipped_stale:
+                errors.append(
+                    f"Skipped {skipped_stale} stale or undated {topic['name']} items outside "
+                    f"{format_window_for_log(window_start_utc, window_end_utc, timezone_name)}."
+                )
 
         ranked = sorted(candidates, key=lambda article: (article.score, article.published), reverse=True)
         picked = 0
@@ -1780,6 +1834,7 @@ def render_html(
     generated_at: datetime,
     timezone_name: str,
     pdf_name: str,
+    epub_name: str,
     errors: list[str],
 ) -> None:
     generated_time = generated_at.strftime("%H:%M")
@@ -2191,7 +2246,7 @@ def render_html(
       <p class="kicker">Personal daily edition</p>
       <h1>MORNING MAGAZINE</h1>
       <p class="deck">{html_escape(cover_theme.get("label", "Balanced edition"))}. {html_escape(cover_theme.get("detail", ""))} - {html_escape(format_date_en(run_date))}</p>
-      <a class="download" href="{html_escape(pdf_name)}">Download PDF</a>
+      <a class="download" href="{html_escape(epub_name)}">Download EPUB</a>
     </div>
   </section>
   <main>
@@ -2222,6 +2277,239 @@ def render_html(
 </html>
 """
     (output_dir / "index.html").write_text(html_doc, encoding="utf-8")
+
+
+def epub_modified_timestamp(generated_at: datetime) -> str:
+    return generated_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def epub_section(title: str, notes: list[DigestNote]) -> str:
+    if not notes:
+        return ""
+    items = []
+    for note in notes:
+        source_link = f'<p><a href="{html_escape(note.url)}">Source</a></p>' if note.url else ""
+        items.append(
+            f"""
+      <section class="note">
+        <p class="kicker">{html_escape(note.topic or "Signal")}</p>
+        <h3>{html_escape(note.title)}</h3>
+        <p>{html_escape(note.detail)}</p>
+        {source_link}
+      </section>
+            """
+        )
+    return f"<h2>{html_escape(title)}</h2>{''.join(items)}"
+
+
+def build_epub(
+    output_dir: Path,
+    articles: list[Article],
+    books: list[BookRecommendation],
+    daily_highlights: list[DigestNote],
+    save_for_later: list[DigestNote],
+    weekly_summary: list[DigestNote],
+    whoop_evidence: DigestNote | None,
+    cover_theme: dict[str, str],
+    run_date: date,
+    generated_at: datetime,
+    timezone_name: str,
+    epub_name: str,
+) -> None:
+    title = f"Morning Magazine - {run_date.isoformat()}"
+    identifier = f"urn:morning-magazine:{run_date.isoformat()}"
+    modified = epub_modified_timestamp(generated_at)
+    cover_item = ""
+    cover_meta = ""
+    cover_img = ""
+    if COVER_IMAGE.exists():
+        cover_item = '<item id="cover-image" href="images/cover.png" media-type="image/png" properties="cover-image"/>'
+        cover_meta = '<meta name="cover" content="cover-image"/>'
+        cover_img = '<img class="cover" src="images/cover.png" alt="Morning Magazine cover"/>'
+
+    article_sections = []
+    current_topic = ""
+    for idx, article in enumerate(articles, 1):
+        heading = ""
+        if article.topic != current_topic:
+            current_topic = article.topic
+            heading = f"<h2>{html_escape(current_topic)}</h2>"
+        article_sections.append(
+            f"""
+      {heading}
+      <article>
+        <p class="kicker">{idx:02d} / {html_escape(article.source)} / {html_escape(iso_to_local(article.published, timezone_name))}</p>
+        <h3>{html_escape(article.title)}</h3>
+        <p class="tags">{html_escape(article.source_type)} | Hype: {html_escape(article.hype_level)}</p>
+        <p>{html_escape(article.summary_en)}</p>
+        <h4>Lietuviskai</h4>
+        <p>{html_escape(article.summary_lt)}</p>
+        <aside>
+          <p><b>Praktiskai:</b> {html_escape(article.practical_takeaway)}</p>
+          <p><b>Hype filtras:</b> {html_escape(article.hype_filter)}</p>
+        </aside>
+        <p><a href="{html_escape(article.url)}">Read source</a></p>
+      </article>
+            """
+        )
+    if not article_sections:
+        article_sections.append(
+            """
+      <article>
+        <h2>No high-quality updates today</h2>
+        <p>The magazine skipped the news sections because the available feeds did not contain meaningful updates.</p>
+      </article>
+            """
+        )
+
+    whoop_section = ""
+    if whoop_evidence:
+        whoop_section = f"""
+      <h2>WHOOP evidence corner</h2>
+      <section class="note">
+        <p class="kicker">{html_escape(whoop_evidence.topic)}</p>
+        <h3>{html_escape(whoop_evidence.title)}</h3>
+        <p>{html_escape(whoop_evidence.detail)}</p>
+        <p><a href="{html_escape(whoop_evidence.url)}">Read evidence</a></p>
+      </section>
+        """
+
+    book_sections = []
+    for book in books:
+        book_sections.append(
+            f"""
+      <article>
+        <p class="kicker">{html_escape(book.book_type)} / {html_escape(book.author)}</p>
+        <h3>{html_escape(book.title)}</h3>
+        <p class="tags">{html_escape(book.length)} | Goodreads: {html_escape(book.goodreads_rating)}</p>
+        <p>{html_escape(book.description_en)}</p>
+        <aside><p><b>Why it may appeal:</b> {html_escape(book.why_it_may_appeal)}</p></aside>
+        <p>{html_escape(book.summary_en)}</p>
+        <h4>Lietuviskai</h4>
+        <p>{html_escape(book.summary_lt)}</p>
+      </article>
+            """
+        )
+
+    content_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+  <head>
+    <title>{html_escape(title)}</title>
+    <link rel="stylesheet" type="text/css" href="styles.css"/>
+  </head>
+  <body>
+    <section class="hero">
+      {cover_img}
+      <p class="kicker">Personal daily edition</p>
+      <h1>Morning Magazine</h1>
+      <p>{html_escape(cover_theme.get("label", "Balanced edition"))}. {html_escape(cover_theme.get("detail", ""))}</p>
+      <p>{html_escape(format_date_en(run_date))} / Updated {html_escape(generated_at.strftime("%H:%M"))} {html_escape(timezone_name)}</p>
+    </section>
+    {epub_section("Kas pasikeite nuo vakar", daily_highlights)}
+    {whoop_section}
+    {''.join(article_sections)}
+    {epub_section("Save for later", save_for_later)}
+    {epub_section("Savaitinis signalas", weekly_summary)}
+    <h2>Book recommendations</h2>
+    {''.join(book_sections)}
+  </body>
+</html>
+"""
+
+    nav_xhtml = f"""<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en" xml:lang="en">
+  <head>
+    <title>{html_escape(title)} navigation</title>
+  </head>
+  <body>
+    <nav epub:type="toc" id="toc">
+      <h1>{html_escape(title)}</h1>
+      <ol>
+        <li><a href="content.xhtml">Read edition</a></li>
+      </ol>
+    </nav>
+  </body>
+</html>
+"""
+
+    package_opf = f"""<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">{html_escape(identifier)}</dc:identifier>
+    <dc:title>{html_escape(title)}</dc:title>
+    <dc:language>en</dc:language>
+    <dc:creator>Morning Magazine</dc:creator>
+    <meta property="dcterms:modified">{modified}</meta>
+    {cover_meta}
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="content" href="content.xhtml" media-type="application/xhtml+xml"/>
+    <item id="style" href="styles.css" media-type="text/css"/>
+    {cover_item}
+  </manifest>
+  <spine>
+    <itemref idref="content"/>
+  </spine>
+</package>
+"""
+
+    container_xml = """<?xml version="1.0" encoding="utf-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/package.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>
+"""
+
+    styles_css = """
+body {
+  font-family: Georgia, serif;
+  line-height: 1.55;
+  color: #20242a;
+}
+h1, h2, h3, h4 {
+  color: #14213d;
+}
+.hero {
+  border-bottom: 2px solid #c8b99a;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+.cover {
+  display: block;
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+.kicker, .tags {
+  color: #5f6570;
+  font-size: .9rem;
+  font-family: Arial, sans-serif;
+}
+article, .note {
+  border-bottom: 1px solid #c8b99a;
+  margin: 1.1rem 0;
+  padding-bottom: 1rem;
+}
+aside {
+  background: #f7f1e6;
+  border-left: 4px solid #b7853b;
+  padding: .2rem .8rem;
+}
+"""
+
+    epub_path = output_dir / epub_name
+    with zipfile.ZipFile(epub_path, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        archive.writestr("META-INF/container.xml", container_xml, compress_type=zipfile.ZIP_DEFLATED)
+        archive.writestr("OEBPS/package.opf", package_opf, compress_type=zipfile.ZIP_DEFLATED)
+        archive.writestr("OEBPS/nav.xhtml", nav_xhtml, compress_type=zipfile.ZIP_DEFLATED)
+        archive.writestr("OEBPS/content.xhtml", content_xhtml, compress_type=zipfile.ZIP_DEFLATED)
+        archive.writestr("OEBPS/styles.css", styles_css, compress_type=zipfile.ZIP_DEFLATED)
+        if COVER_IMAGE.exists():
+            archive.write(COVER_IMAGE, "OEBPS/images/cover.png", compress_type=zipfile.ZIP_DEFLATED)
 
 
 def register_fonts() -> tuple[str, str, str]:
@@ -2596,6 +2884,7 @@ def write_data(
     run_date: date,
     generated_at: datetime,
     timezone_name: str,
+    epub_name: str,
 ) -> None:
     payload = {
         "title": "Morning Magazine",
@@ -2615,6 +2904,7 @@ def write_data(
             "date": run_date.isoformat(),
             "json": f"archive/{run_date.isoformat()}/ryto-signalas.json",
             "pdf": f"archive/{run_date.isoformat()}/morning-magazine-{run_date.isoformat()}.pdf",
+            "epub": f"archive/{run_date.isoformat()}/{epub_name}",
             "html": f"archive/{run_date.isoformat()}/index.html",
         },
         "feed_errors": errors,
@@ -2624,7 +2914,7 @@ def write_data(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate the personal Morning Magazine.")
-    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for the generated website and PDF.")
+    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Directory for the generated website, PDF, and EPUB.")
     parser.add_argument("--timezone", default=os.getenv("NEWS_TIMEZONE", DEFAULT_TIMEZONE), help="IANA timezone for dates.")
     parser.add_argument("--date", help="Publication date in YYYY-MM-DD format. Defaults to today in the selected timezone.")
     parser.add_argument("--per-topic", type=int, default=2, help="Maximum number of news stories to select per topic.")
@@ -2643,7 +2933,13 @@ def main() -> None:
     prepare_output_dir(output_dir)
     restore_published_archive(output_dir)
     excluded_article_keys = load_previous_article_keys(output_dir, run_date)
-    articles, errors = collect_articles(run_date, per_topic=max(1, args.per_topic), excluded_keys=excluded_article_keys)
+    articles, errors = collect_articles(
+        run_date,
+        generated_at,
+        timezone_name,
+        per_topic=max(1, args.per_topic),
+        excluded_keys=excluded_article_keys,
+    )
     books = select_book_recommendations(run_date, output_dir, count=args.book_count)
     daily_highlights = build_daily_highlights(articles)
     save_for_later = select_save_for_later(articles)
@@ -2651,6 +2947,7 @@ def main() -> None:
     whoop_evidence = select_whoop_evidence(articles)
     cover_theme = build_cover_theme(articles)
     pdf_name = f"morning-magazine-{run_date.isoformat()}.pdf"
+    epub_name = f"morning-magazine-{run_date.isoformat()}.epub"
     render_html(
         output_dir,
         articles,
@@ -2664,6 +2961,7 @@ def main() -> None:
         generated_at,
         timezone_name,
         pdf_name,
+        epub_name,
         errors,
     )
     build_pdf(
@@ -2680,7 +2978,22 @@ def main() -> None:
         timezone_name,
         pdf_name,
     )
+    build_epub(
+        output_dir,
+        articles,
+        books,
+        daily_highlights,
+        save_for_later,
+        weekly_summary,
+        whoop_evidence,
+        cover_theme,
+        run_date,
+        generated_at,
+        timezone_name,
+        epub_name,
+    )
     shutil.copy2(output_dir / pdf_name, output_dir / "latest.pdf")
+    shutil.copy2(output_dir / epub_name, output_dir / "latest.epub")
     write_data(
         output_dir,
         articles,
@@ -2694,11 +3007,13 @@ def main() -> None:
         run_date,
         generated_at,
         timezone_name,
+        epub_name,
     )
-    archive_current_edition(output_dir, run_date, pdf_name, generated_at)
+    archive_current_edition(output_dir, run_date, pdf_name, epub_name, generated_at)
 
     print(f"Generated {output_dir / 'index.html'}")
     print(f"Generated {output_dir / pdf_name}")
+    print(f"Generated {output_dir / epub_name}")
 
 
 if __name__ == "__main__":

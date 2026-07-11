@@ -83,6 +83,15 @@ jobs:
         run: |
           python build_ryto_signalas_pdf.py --timezone Europe/London --date "${{ steps.london-time.outputs.date }}"
 
+      - name: Verify generated files
+        if: steps.london-time.outputs.should_run == 'true'
+        run: |
+          test -f public/ryto-signalas.json
+          test -f public/latest.epub
+          test -f public/latest.pdf
+          test -f "public/archive/${{ steps.london-time.outputs.date }}/morning-magazine-${{ steps.london-time.outputs.date }}.epub"
+          test -f "public/archive/${{ steps.london-time.outputs.date }}/morning-magazine-${{ steps.london-time.outputs.date }}.pdf"
+
       - name: Set up Node
         if: steps.london-time.outputs.should_run == 'true'
         uses: actions/setup-node@v4
