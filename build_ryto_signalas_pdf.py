@@ -1839,17 +1839,6 @@ def render_html(
     generated_time = generated_at.strftime("%H:%M")
     generated_date = generated_at.strftime("%Y-%m-%d")
     assets_rel = f"assets/{COVER_IMAGE.name}" if COVER_IMAGE.exists() else ""
-    highlight_cards = "".join(
-        f"""
-        <article class="note-card">
-          <span>{html_escape(note.topic or "Signal")}</span>
-          <h3>{html_escape(note.title)}</h3>
-          <p>{html_escape(note.detail)}</p>
-          <a href="{html_escape(note.url)}" target="_blank" rel="noreferrer">Source</a>
-        </article>
-        """
-        for note in daily_highlights
-    )
     save_cards = "".join(
         f"""
         <article class="note-card">
@@ -1882,14 +1871,6 @@ def render_html(
             <p>{html_escape(whoop_evidence.detail)}</p>
             <a href="{html_escape(whoop_evidence.url)}" target="_blank" rel="noreferrer">Read evidence</a>
           </article>
-        </section>
-        """
-    highlights_section = ""
-    if highlight_cards:
-        highlights_section = f"""
-        <section class="note-section">
-          <h2>Kas pasikeitė nuo vakar</h2>
-          <div class="note-grid">{highlight_cards}</div>
         </section>
         """
     save_section = ""
@@ -2258,7 +2239,6 @@ def render_html(
         <div class="stat"><b>{html_escape(generated_time)}</b><span>updated {html_escape(generated_date)} {html_escape(timezone_name)}</span></div>
       </div>
     </section>
-    {highlights_section}
     {whoop_card}
     {''.join(cards)}
     {save_section}
@@ -2405,7 +2385,6 @@ def build_epub(
       <p>{html_escape(cover_theme.get("label", "Balanced edition"))}. {html_escape(cover_theme.get("detail", ""))}</p>
       <p>{html_escape(format_date_en(run_date))} / Updated {html_escape(generated_at.strftime("%H:%M"))} {html_escape(timezone_name)}</p>
     </section>
-    {epub_section("Kas pasikeite nuo vakar", daily_highlights)}
     {whoop_section}
     {''.join(article_sections)}
     {epub_section("Save for later", save_for_later)}
@@ -2849,7 +2828,6 @@ def build_pdf(
     story.append(stats)
     story.append(Spacer(1, 10))
 
-    story.extend(notes_block("Kas pasikeitė nuo vakar", daily_highlights, styles))
     if whoop_evidence:
         story.extend(notes_block("WHOOP evidence corner", [whoop_evidence], styles))
     story.extend(notes_block("Save for later", save_for_later, styles))

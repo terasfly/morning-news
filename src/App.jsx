@@ -462,7 +462,6 @@ function App() {
   }, [digest.articles, query, selectedTopic, windowFilter]);
 
   const books = digest.book_recommendations ?? [];
-  const highlights = digest.daily_highlights ?? [];
   const saveForLater = digest.save_for_later ?? [];
   const weeklySummary = digest.weekly_summary ?? [];
   const whoopEvidence = digest.whoop_evidence ?? null;
@@ -672,8 +671,6 @@ function App() {
             </div>
           </aside>
         </section>
-
-        <NoteSection title="Kas pasikeitė nuo vakar" notes={highlights} Icon={Sparkles} />
 
         <section className="controls-row" aria-label="Filters">
           <div className="topic-tabs">
