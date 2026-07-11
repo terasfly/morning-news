@@ -933,6 +933,15 @@ a {
   font-weight: 700;
 }
 
+.article-source-line a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .article-main p {
   margin: 0;
   color: var(--muted);

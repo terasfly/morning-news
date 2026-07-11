@@ -1316,7 +1316,7 @@ def extractive_summary(title: str, source_summary: str, article_text: str, topic
             score += 5 - idx
         scored.append((score, idx, sentence))
 
-    picked = sorted(sorted(scored, reverse=True)[:4], key=lambda item: item[1])
+    picked = sorted(sorted(scored, reverse=True)[:3], key=lambda item: item[1])
     summary = " ".join(sentence for _, _, sentence in picked)
     return normalize_sentence_count(summary, 3)
 
@@ -1324,13 +1324,23 @@ def extractive_summary(title: str, source_summary: str, article_text: str, topic
 def normalize_sentence_count(text: str, target: int = 3) -> str:
     sentences = split_sentences(text)
     if len(sentences) >= target:
-        return " ".join(sentences[: min(4, len(sentences))])
+        return " ".join(sentences[:target])
     clean = clean_text(text)
     if not clean:
         return ""
     if clean[-1] not in ".!?":
         clean += "."
     return clean
+
+
+def strip_summary_prefixes(text: str) -> str:
+    text = clean_text(text)
+    return re.sub(
+        r"^(english summary|summary|lithuanian translation|lithuanian|lietuviškai|lietuviskai|angliška santrauka)\s*:\s*",
+        "",
+        text,
+        flags=re.I,
+    ).strip()
 
 
 def translate_to_lithuanian(text: str) -> str:
@@ -1343,7 +1353,7 @@ def translate_to_lithuanian(text: str) -> str:
         translated = GoogleTranslator(source="en", target="lt").translate(text[:4500])
         return clean_text(translated)
     except Exception:
-        return f"Vertimas laikinai nepavyko. Angliška santrauka: {text}"
+        return "Lietuviškas vertimas laikinai nepavyko. Anglišką esmę skaityk kairėje."
 
 
 def extract_openai_text(payload: dict[str, Any]) -> str:
@@ -1410,10 +1420,11 @@ You are editing a personal daily Morning Magazine.
 
 Task:
 - Read the article material below.
-- Write a concise English summary in 3-4 sentences.
-- Include only the most important facts: what happened, why it matters, and key updates.
+- Write a concise English summary in up to 3 sentences.
+- Include only the main essence: what happened, why it matters, and the one key update.
+- Avoid long background, quotes, and secondary details.
 - Do not add facts not supported by the material.
-- Then translate the summary completely into Lithuanian.
+- Then translate the summary completely into Lithuanian, also in up to 3 sentences.
 - Return only valid JSON with keys "summary_en" and "summary_lt".
 
 Section: {topic["name"]}
@@ -1427,8 +1438,10 @@ Article material:
     parsed = call_openai_json(prompt, max_output_tokens=900)
     if not parsed:
         return None
-    summary_en = clean_text(str(parsed.get("summary_en", "")))
-    summary_lt = clean_text(str(parsed.get("summary_lt", "")))
+    summary_en = strip_summary_prefixes(str(parsed.get("summary_en", "")))
+    summary_lt = strip_summary_prefixes(str(parsed.get("summary_lt", "")))
+    summary_en = normalize_sentence_count(summary_en, 3)
+    summary_lt = normalize_sentence_count(summary_lt, 3)
     if len(split_sentences(summary_en)) < 2 or not summary_lt:
         return None
     return summary_en, summary_lt
@@ -1443,9 +1456,11 @@ def enrich_article(article: Article, topic: dict[str, Any]) -> Article:
         summary_en, summary_lt = ai_summary
         read_status = f"{read_status}+ai"
     else:
-        summary_en = extractive_summary(article.title, article.summary, article_text, topic)
-        summary_lt = translate_to_lithuanian(summary_en)
+        summary_en = strip_summary_prefixes(extractive_summary(article.title, article.summary, article_text, topic))
+        summary_lt = strip_summary_prefixes(translate_to_lithuanian(summary_en))
 
+    summary_en = normalize_sentence_count(summary_en, 3)
+    summary_lt = normalize_sentence_count(summary_lt, 3)
     article.summary_en = summary_en
     article.summary_lt = summary_lt
     article.summary = summary_en
@@ -1904,6 +1919,7 @@ def render_html(
                 <span>{idx:02d}</span>
                 <span>Publikavo: {html_escape(article.source)}</span>
                 <span>Publikuota: {html_escape(iso_to_local(article.published, timezone_name))}</span>
+                <a href="{html_escape(article.url)}" target="_blank" rel="noreferrer">Skaityti visą straipsnį</a>
               </div>
               <h3>{html_escape(article.title)}</h3>
               <div class="story-tags">
@@ -1917,7 +1933,6 @@ def render_html(
                 <p><b>Praktiškai:</b> {html_escape(article.practical_takeaway)}</p>
                 <p><b>Hype filtras:</b> {html_escape(article.hype_filter)}</p>
               </div>
-              <a href="{html_escape(article.url)}" target="_blank" rel="noreferrer">Read source</a>
             </article>
             """
         )
@@ -2317,7 +2332,7 @@ def build_epub(
             f"""
       {heading}
       <article>
-        <p class="kicker">{idx:02d} / Publikavo: {html_escape(article.source)} / Publikuota: {html_escape(iso_to_local(article.published, timezone_name))}</p>
+        <p class="kicker">{idx:02d} / Publikavo: {html_escape(article.source)} / Publikuota: {html_escape(iso_to_local(article.published, timezone_name))} / <a href="{html_escape(article.url)}">Skaityti visa straipsni</a></p>
         <h3>{html_escape(article.title)}</h3>
         <p class="tags">{html_escape(article.source_type)} | Hype: {html_escape(article.hype_level)}</p>
         <p>{html_escape(article.summary_en)}</p>
@@ -2327,7 +2342,6 @@ def build_epub(
           <p><b>Praktiskai:</b> {html_escape(article.practical_takeaway)}</p>
           <p><b>Hype filtras:</b> {html_escape(article.hype_filter)}</p>
         </aside>
-        <p><a href="{html_escape(article.url)}">Read source</a></p>
       </article>
             """
         )
@@ -2564,7 +2578,7 @@ def source_link(label: str, url: str) -> str:
 
 
 def article_block(article: Article, timezone_name: str, styles):
-    source = source_link(f"{article.source}, {iso_to_local(article.published, timezone_name)}", article.url)
+    article_url = source_link("Skaityti visą straipsnį", article.url)
     column_gap = 8
     column_w = (CONTENT_W - column_gap) / 2
     summary_table = Table(
@@ -2610,7 +2624,7 @@ def article_block(article: Article, timezone_name: str, styles):
             ),
             Paragraph(html_escape(article.title), styles["Headline"]),
             Paragraph(
-                f"<b>Publikavo:</b> {html_escape(article.source)} &nbsp; <b>Publikuota:</b> {html_escape(iso_to_local(article.published, timezone_name))}",
+                f"<b>Publikavo:</b> {html_escape(article.source)} &nbsp; <b>Publikuota:</b> {html_escape(iso_to_local(article.published, timezone_name))} &nbsp; {article_url}",
                 styles["Source"],
             ),
             Paragraph(
@@ -2621,7 +2635,6 @@ def article_block(article: Article, timezone_name: str, styles):
             Spacer(1, 4),
             Paragraph(f"<b>Praktiškai:</b> {html_escape(article.practical_takeaway)}", styles["Insight"]),
             Paragraph(f"<b>Hype filtras:</b> {html_escape(article.hype_filter)}", styles["Insight"]),
-            Paragraph(f"Source: {source}", styles["Source"]),
         ]
     )
 

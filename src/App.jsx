@@ -948,6 +948,10 @@ function ArticleCard({ article, index, timezone }) {
           <span>
             Publikuota: <time dateTime={article.published}>{publishedLabel}</time>
           </span>
+          <a href={article.url} target="_blank" rel="noreferrer">
+            <ExternalLink size={14} />
+            Skaityti visą straipsnį
+          </a>
         </div>
         <p>{summaryEn}</p>
 
@@ -964,13 +968,6 @@ function ArticleCard({ article, index, timezone }) {
             <strong>Hype filtras:</strong> {hypeFilter}
           </p>
         </section>
-
-        <div className="article-footer">
-          <a href={article.url} target="_blank" rel="noreferrer">
-            <ExternalLink size={15} />
-            {article.source}
-          </a>
-        </div>
       </div>
       <a className="open-link" href={article.url} target="_blank" rel="noreferrer" aria-label="Open source">
         <ArrowUpRight size={19} />
