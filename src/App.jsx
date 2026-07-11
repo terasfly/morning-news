@@ -14,7 +14,9 @@ import {
   ExternalLink,
   FileText,
   Filter,
+  Fish,
   Flame,
+  Gamepad2,
   HeartPulse,
   Newspaper,
   Radio,
@@ -202,7 +204,9 @@ const TOPICS = [
   { id: "Brain Research", label: "Brain", Icon: Brain },
   { id: "Longevity", label: "Longevity", Icon: HeartPulse },
   { id: "WHOOP & Wearables", label: "WHOOP", Icon: Watch },
-  { id: "AI & ChatGPT", label: "AI", Icon: Cpu }
+  { id: "AI & ChatGPT", label: "AI", Icon: Cpu },
+  { id: "GTA 6", label: "GTA 6", Icon: Gamepad2 },
+  { id: "NI Trout & Woodburn", label: "Trout", Icon: Fish }
 ];
 
 const WINDOWS = [
@@ -227,6 +231,14 @@ const topicMeta = {
   "AI & ChatGPT": {
     Icon: Cpu,
     color: "cyan"
+  },
+  "GTA 6": {
+    Icon: Gamepad2,
+    color: "amber"
+  },
+  "NI Trout & Woodburn": {
+    Icon: Fish,
+    color: "blue"
   }
 };
 

@@ -14,6 +14,8 @@
   --line: #d7ded5;
   --cyan: #007c89;
   --cyan-soft: #d9f0f2;
+  --blue: #2667a5;
+  --blue-soft: #e2eef8;
   --green: #467a31;
   --green-soft: #e3f0dc;
   --violet: #6956a4;
@@ -802,6 +804,10 @@ a {
   background: var(--amber);
 }
 
+.article-card.tone-blue::before {
+  background: var(--blue);
+}
+
 .article-rank {
   width: 42px;
   min-height: 42px;
@@ -885,6 +891,11 @@ a {
 
 .tone-cyan .article-meta span {
   background: var(--cyan-soft);
+}
+
+.tone-blue .article-meta span {
+  color: var(--blue);
+  background: var(--blue-soft);
 }
 
 .article-card .article-meta .source-type-chip {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -66,6 +67,9 @@ PUBLISHED_DATA_URL = os.getenv(
 PUBLISHED_SITE_URL = os.getenv("PUBLISHED_SITE_URL", "https://terasfly.github.io/morning-news").rstrip("/")
 ARCHIVE_INDEX_URL = f"{PUBLISHED_SITE_URL}/archive/index.json"
 NEWS_WINDOW_START_HOUR = 18
+WATCH_STATE_NAME = "watch-state.json"
+MAX_NEWS_ARTICLES = 5
+ALWAYS_INCLUDE_FRESH_TOPICS = {"GTA 6", "NI Trout & Woodburn"}
 
 
 TOPICS: list[dict[str, Any]] = [
@@ -201,6 +205,118 @@ TOPICS: list[dict[str, Any]] = [
                 "Google News AI",
                 "https://news.google.com/rss/search?q=artificial%20intelligence%20OR%20AI%20agents%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
+        ],
+    },
+    {
+        "name": "GTA 6",
+        "tag": "GTA 6",
+        "description": "Fresh official or reliable updates about Grand Theft Auto VI.",
+        "min_score": 28,
+        "strict_fresh": True,
+        "keywords": [
+            "gta 6",
+            "gta vi",
+            "grand theft auto vi",
+            "grand theft auto 6",
+            "rockstar games",
+            "take-two",
+            "trailer",
+            "gameplay",
+            "release date",
+            "delay",
+            "console",
+            "playstation",
+            "xbox",
+        ],
+        "feeds": [
+            (
+                "Google News GTA 6",
+                "https://news.google.com/rss/search?q=%22GTA%206%22%20OR%20%22Grand%20Theft%20Auto%20VI%22%20OR%20%22Rockstar%20Games%22%20%22GTA%206%22%20when%3A2d&hl=en-GB&gl=GB&ceid=GB%3Aen",
+            ),
+        ],
+        "watch_pages": [
+            {
+                "id": "rockstar-gta-vi",
+                "source": "Rockstar Games GTA VI page",
+                "url": "https://www.rockstargames.com/VI",
+                "keywords": [
+                    "grand theft auto vi",
+                    "gta vi",
+                    "gta 6",
+                    "rockstar",
+                    "trailer",
+                    "release",
+                    "screenshots",
+                    "wishlist",
+                ],
+                "change_title": "Official Rockstar GTA VI page changed",
+                "change_summary_en": "The monitored official Rockstar GTA VI page changed since the previous scan, which can indicate a fresh trailer, release, media, platform or page-copy update. This should be treated as an official signal, not a rumor, but the exact detail still needs checking on the source page. Use the link to confirm whether the change affects release timing, gameplay/media, platforms or Rockstar messaging.",
+                "change_summary_lt": "Stebimas oficialus Rockstar GTA VI puslapis pasikeite nuo ankstesnio patikrinimo, todel tai gali reiksti nauja treileri, isleidimo, medijos, platformu arba puslapio teksto atnaujinima. Tai verta laikyti oficialiu signalu, ne gandu, bet tikslia detale vis tiek reikia patikrinti saltinyje. Nuorodoje pasitikrink, ar pokytis susijes su isleidimo laiku, gameplay/medija, platformomis arba Rockstar zinute.",
+                "practical_takeaway": "Useful only if the official page change affects release timing, trailers, gameplay/media, platforms or Rockstar messaging.",
+                "hype_filter": "Medium. Official page changes matter, but confirm exactly what changed before treating it as big news.",
+                "hype_level": "Medium",
+            }
+        ],
+    },
+    {
+        "name": "NI Trout & Woodburn",
+        "tag": "NI trout stocking",
+        "description": "Fresh Northern Ireland trout stocking, DAERA, nidirect, and Woodburn Reservoir updates.",
+        "min_score": 24,
+        "strict_fresh": True,
+        "keywords": [
+            "trout",
+            "stocking",
+            "fish stocking",
+            "brown trout",
+            "rainbow trout",
+            "woodburn",
+            "woodburn reservoir",
+            "north woodburn",
+            "lower south woodburn",
+            "middle south woodburn",
+            "south woodburn",
+            "northern ireland",
+            "daera",
+            "nidirect",
+            "public angling estate",
+            "movanagher",
+            "fishery",
+            "angling",
+        ],
+        "feeds": [
+            (
+                "Google News Woodburn Trout",
+                "https://news.google.com/rss/search?q=%28%22Woodburn%20Reservoir%22%20OR%20%22Woodburn%20Reservoirs%22%20OR%20%22North%20Woodburn%22%20OR%20%22Middle%20South%20Woodburn%22%20OR%20%22Lower%20South%20Woodburn%22%29%20%28trout%20OR%20stocking%20OR%20angling%20OR%20fishery%20OR%20DAERA%29%20when%3A7d&hl=en-GB&gl=GB&ceid=GB%3Aen",
+            ),
+            (
+                "Google News NI Trout Stocking",
+                "https://news.google.com/rss/search?q=%28DAERA%20OR%20nidirect%29%20%28%22fish%20stocking%22%20OR%20%22trout%20stocking%22%29%20%22Northern%20Ireland%22%20when%3A7d&hl=en-GB&gl=GB&ceid=GB%3Aen",
+            ),
+        ],
+        "watch_pages": [
+            {
+                "id": "nidirect-fish-stocking-{year}",
+                "source": "nidirect fish stocking figures",
+                "url": "https://www.nidirect.gov.uk/articles/{year}-fish-stocking-figures",
+                "keywords": [
+                    "woodburn",
+                    "north woodburn",
+                    "lower south woodburn",
+                    "middle south woodburn",
+                    "south woodburn",
+                    "trout",
+                    "stocking",
+                    "brown trout",
+                    "rainbow trout",
+                ],
+                "change_title": "Official Woodburn / Northern Ireland trout stocking page changed",
+                "change_summary_en": "The monitored official Northern Ireland fish-stocking page changed since the previous scan, and the relevant text includes Woodburn or trout-stocking terms. This is a fresh signal to check the latest Woodburn Reservoir or Public Angling Estate stocking rows before planning a session. Use the source link to confirm exact waters, trout species, quantities, dates and permit rules.",
+                "change_summary_lt": "Stebimas oficialus Siaures Airijos zuvu izuvinimo puslapis pasikeite nuo ankstesnio patikrinimo, o aktualiame tekste yra Woodburn arba upetakiu izuvinimo terminai. Tai sviezias signalas pasitikrinti naujausias Woodburn rezervuaru arba Public Angling Estate izuvinimo eilutes pries planuojant zvejyba. Saltinio nuorodoje patikrink tikslius vandens telkinius, upetakiu rusis, kiekius, datas ir leidimu taisykles.",
+                "practical_takeaway": "Useful for local angling planning, but confirm the exact Woodburn water, species, quantity and permit rules before acting.",
+                "hype_filter": "Low. This is an official-page change signal; confirm the exact rows on the source page.",
+                "hype_level": "Low",
+            }
         ],
     },
 ]
@@ -1115,6 +1231,140 @@ def load_previous_article_keys(output_dir: Path, run_date: date) -> set[str]:
     return keys
 
 
+def load_previous_watch_state(output_dir: Path) -> dict[str, Any]:
+    cache_bust = int(datetime.now(timezone.utc).timestamp())
+    sources: list[tuple[str, Any]] = [
+        ("remote", lambda: fetch_url(f"{PUBLISHED_SITE_URL}/{WATCH_STATE_NAME}?t={cache_bust}", timeout=12).decode("utf-8-sig")),
+        ("local", lambda: (output_dir / WATCH_STATE_NAME).read_text(encoding="utf-8-sig")),
+    ]
+    for _, loader in sources:
+        try:
+            payload = json.loads(loader())
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+            continue
+        if isinstance(payload, dict) and isinstance(payload.get("pages"), dict):
+            return payload
+    return {"pages": {}}
+
+
+def write_watch_state(output_dir: Path, watch_state: dict[str, Any]) -> None:
+    (output_dir / WATCH_STATE_NAME).write_text(json.dumps(watch_state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def html_to_text(document: bytes) -> str:
+    page_html = document.decode("utf-8", errors="replace")
+    page_html = re.sub(r"(?is)<(script|style|noscript|svg)[^>]*>.*?</\1>", " ", page_html)
+    page_html = re.sub(r"(?is)<br\s*/?>", "\n", page_html)
+    page_html = re.sub(r"(?is)</(p|li|tr|td|th|h[1-6]|div)>", "\n", page_html)
+    page_html = re.sub(r"(?is)<[^>]+>", " ", page_html)
+    return clean_text(html.unescape(page_html))
+
+
+def relevant_watch_text(text: str, keywords: list[str]) -> str:
+    lowered = text.lower()
+    chunks: list[str] = []
+    seen_chunks: set[str] = set()
+    for keyword in keywords:
+        keyword_lower = keyword.lower()
+        start_at = 0
+        while True:
+            idx = lowered.find(keyword_lower, start_at)
+            if idx == -1:
+                break
+            start = max(0, idx - 140)
+            end = min(len(text), idx + 260)
+            chunk = clean_text(text[start:end])
+            key = chunk.lower()[:160]
+            if chunk and key not in seen_chunks:
+                chunks.append(chunk)
+                seen_chunks.add(key)
+            start_at = idx + len(keyword_lower)
+            if len(chunks) >= 10:
+                break
+        if len(chunks) >= 10:
+            break
+    return clean_text(" ... ".join(chunks)) or truncate_words(text, 220)
+
+
+def make_watch_article(topic: dict[str, Any], page: dict[str, Any], url: str, generated_at: datetime, snippet: str) -> Article:
+    summary_en = normalize_sentence_count(
+        str(
+            page.get("change_summary_en")
+            or "A monitored official page changed since the previous scan, so it is being surfaced as a fresh update. Treat this as a source-page signal and open the link to confirm the exact details. The magazine includes it because the changed text matched the topic keywords you asked to watch."
+        ),
+        3,
+    )
+    summary_lt = normalize_sentence_count(
+        str(
+            page.get("change_summary_lt")
+            or "Stebimas oficialus puslapis pasikeite nuo ankstesnio patikrinimo, todel jis pateikiamas kaip sviezias atnaujinimas. Tai yra saltinio puslapio signalas, tad atidaryk nuoroda ir patikrink tikslia detale. Laikrastis ji itrauke, nes pasikeites tekstas atitiko stebimos temos raktažodzius."
+        ),
+        3,
+    )
+    return Article(
+        topic=topic["name"],
+        tag=topic["tag"],
+        title=clean_text(str(page.get("change_title") or "Official monitored page changed")),
+        summary=summary_en,
+        summary_en=summary_en,
+        summary_lt=summary_lt,
+        url=url,
+        source=clean_text(str(page.get("source") or "official monitored page")),
+        published=generated_at.astimezone(timezone.utc).isoformat(),
+        score=92,
+        read_status="monitored-page-change",
+        word_count=max(60, len(snippet.split())),
+        source_type="Official monitored page update",
+        hype_level=clean_text(str(page.get("hype_level") or "Low")),
+        hype_filter=clean_text(str(page.get("hype_filter") or "Low. This is an official-page change signal; confirm the exact details on the source page.")),
+        practical_takeaway=clean_text(str(page.get("practical_takeaway") or "Useful context, but confirm the exact page change before acting.")),
+    )
+
+
+def collect_watch_page_articles(
+    topic: dict[str, Any],
+    run_date: date,
+    generated_at: datetime,
+    previous_watch_state: dict[str, Any],
+    next_watch_state: dict[str, Any],
+) -> tuple[list[Article], list[str]]:
+    articles: list[Article] = []
+    errors: list[str] = []
+    pages_state = next_watch_state.setdefault("pages", {})
+    previous_pages = previous_watch_state.get("pages", {}) if isinstance(previous_watch_state.get("pages"), dict) else {}
+
+    for page in topic.get("watch_pages", []):
+        page_id = str(page.get("id", page.get("url", "watch-page"))).format(year=run_date.year)
+        url = str(page.get("url", "")).format(year=run_date.year)
+        if not url:
+            continue
+        keywords = [str(keyword) for keyword in page.get("keywords", topic.get("keywords", []))]
+        try:
+            text = html_to_text(fetch_url(url, timeout=20))
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+            errors.append(f"{page.get('source', url)}: monitored page unavailable ({exc})")
+            continue
+
+        snippet = relevant_watch_text(text, keywords)
+        content_hash = hashlib.sha256(snippet.lower().encode("utf-8")).hexdigest()
+        previous_hash = ""
+        if isinstance(previous_pages.get(page_id), dict):
+            previous_hash = str(previous_pages[page_id].get("content_hash", ""))
+
+        pages_state[page_id] = {
+            "url": url,
+            "source": page.get("source", ""),
+            "content_hash": content_hash,
+            "checked_at": generated_at.isoformat(timespec="seconds"),
+            "snippet": truncate_words(snippet, 160),
+        }
+
+        if previous_hash and previous_hash != content_hash:
+            articles.append(make_watch_article(topic, page, url, generated_at, snippet))
+
+    return articles, errors
+
+
 def whoop_science_fallback(run_date: date, excluded_keys: set[str], seen: set[str]) -> Article | None:
     start = run_date.toordinal() % len(WHOOP_SCIENCE_FALLBACKS)
     for offset in range(len(WHOOP_SCIENCE_FALLBACKS)):
@@ -1448,6 +1698,12 @@ Article material:
 
 
 def enrich_article(article: Article, topic: dict[str, Any]) -> Article:
+    if article.read_status == "monitored-page-change":
+        article.summary_en = normalize_sentence_count(article.summary_en or article.summary, 3)
+        article.summary_lt = normalize_sentence_count(article.summary_lt, 3)
+        article.summary = article.summary_en
+        return annotate_article(article)
+
     article_text, read_status = extract_article_text(article.url)
     word_count = len(article_text.split()) if article_text else len(article.summary.split())
 
@@ -1484,14 +1740,18 @@ def is_meaningful(article: Article, topic: dict[str, Any]) -> bool:
 
 def classify_source_type(article: Article) -> str:
     source = f"{article.source} {article.url} {article.read_status}".lower()
+    if "monitored-page-change" in source:
+        return "Official monitored page update"
     if "evergreen-scientific-fallback" in source:
         return "Older scientific evidence"
     if any(marker in source for marker in ("pubmed", "pmc", "nature", "plos", "journal", "sensors")):
         return "Peer-reviewed / scientific source"
     if any(marker in source for marker in ("university", "sciencedaily", "medicalxpress", "news-medical")):
         return "Research report"
-    if any(marker in source for marker in ("openai", "anthropic", "whoop.com", "google", "meta", "deepmind")):
+    if any(marker in source for marker in ("openai", "anthropic", "whoop.com", "google", "meta", "deepmind", "rockstargames", "take-two")):
         return "Company / product update"
+    if any(marker in source for marker in ("daera", "nidirect", "gov.uk")):
+        return "Official public information"
     if "google news" in source:
         return "News search result"
     return "Media report"
@@ -1515,7 +1775,7 @@ def estimate_hype_level(article: Article, source_type: str) -> str:
         return "High"
     if source_type in {"Peer-reviewed / scientific source", "Older scientific evidence", "Research report"}:
         return "Low"
-    if article.topic in {"Longevity", "AI & ChatGPT"}:
+    if article.topic in {"Longevity", "AI & ChatGPT", "GTA 6"}:
         return "Medium"
     return "Low"
 
@@ -1541,6 +1801,10 @@ def build_practical_takeaway(article: Article, source_type: str) -> str:
         return "Useful if it improves how you interpret sleep, HRV, recovery, respiratory rate, or wearable accuracy."
     if article.topic == "AI & ChatGPT":
         return "Watch whether this changes real tools, model access, safety, or daily workflows."
+    if article.topic == "GTA 6":
+        return "Useful only if it changes official release timing, platform availability, trailers, gameplay details, or Rockstar statements."
+    if article.topic == "NI Trout & Woodburn":
+        return "Useful for local angling planning; confirm the exact reservoir, date, species, quantity and permit rules before acting."
     return "Useful context, but read the source before treating it as a decision signal."
 
 
@@ -1557,14 +1821,20 @@ def collect_articles(
     generated_at: datetime,
     timezone_name: str,
     per_topic: int,
+    output_dir: Path,
     excluded_keys: set[str] | None = None,
-) -> tuple[list[Article], list[str]]:
+) -> tuple[list[Article], list[str], dict[str, Any]]:
     selected: list[Article] = []
     errors: list[str] = []
     seen: set[str] = set()
     excluded_keys = excluded_keys or set()
     skipped_existing = 0
     window_start_utc, window_end_utc = news_window(run_date, generated_at, timezone_name)
+    previous_watch_state = load_previous_watch_state(output_dir)
+    next_watch_state: dict[str, Any] = {
+        "generated_at": generated_at.isoformat(timespec="seconds"),
+        "pages": dict(previous_watch_state.get("pages", {})) if isinstance(previous_watch_state.get("pages"), dict) else {},
+    }
 
     for topic in TOPICS:
         candidates: list[Article] = []
@@ -1574,6 +1844,10 @@ def collect_articles(
                 candidates.extend(parse_feed(feed, source, topic))
             except (urllib.error.URLError, TimeoutError, ET.ParseError, ValueError, OSError) as exc:
                 errors.append(f"{source}: {exc}")
+
+        watch_candidates, watch_errors = collect_watch_page_articles(topic, run_date, generated_at, previous_watch_state, next_watch_state)
+        candidates.extend(watch_candidates)
+        errors.extend(watch_errors)
 
         if topic.get("strict_fresh"):
             original_count = len(candidates)
@@ -1618,7 +1892,7 @@ def collect_articles(
     if skipped_existing:
         errors.append(f"Skipped {skipped_existing} articles already shown in today's published edition.")
 
-    return selected, errors
+    return selected, errors, next_watch_state
 
 
 def rotated_books(books: list[dict[str, str]], seed: int) -> list[dict[str, str]]:
@@ -1783,6 +2057,46 @@ def build_weekly_summary(run_date: date, articles: list[Article]) -> list[Digest
 TOPIC_NAMES = [topic["name"] for topic in TOPICS]
 
 
+def topic_rank(topic_name: str) -> int:
+    try:
+        return TOPIC_NAMES.index(topic_name)
+    except ValueError:
+        return len(TOPIC_NAMES)
+
+
+def article_sort_value(article: Article) -> tuple[int, int, str]:
+    return (topic_rank(article.topic), -article.score, article.published)
+
+
+def stable_article_key(article: Article) -> str:
+    keys = sorted(article_keys(article.url, article.title))
+    return keys[0] if keys else article.title
+
+
+def limit_news_articles(articles: list[Article], limit: int = MAX_NEWS_ARTICLES) -> list[Article]:
+    if len(articles) <= limit:
+        return sorted(articles, key=article_sort_value)
+
+    pinned = sorted(
+        [article for article in articles if article.topic in ALWAYS_INCLUDE_FRESH_TOPICS],
+        key=lambda article: (article.score, article.published),
+        reverse=True,
+    )[:limit]
+    pinned_keys = {stable_article_key(article) for article in pinned}
+    remaining = [article for article in articles if stable_article_key(article) not in pinned_keys]
+    remaining = sorted(
+        remaining,
+        key=lambda article: (
+            article.topic in {"Brain Research", "Longevity", "AI & ChatGPT", "WHOOP & Wearables"},
+            article.score,
+            article.published,
+        ),
+        reverse=True,
+    )
+    chosen = pinned + remaining[: max(0, limit - len(pinned))]
+    return sorted(chosen, key=article_sort_value)
+
+
 def build_cover_theme(articles: list[Article]) -> dict[str, str]:
     if not articles:
         return {
@@ -1799,6 +2113,8 @@ def build_cover_theme(articles: list[Article]) -> dict[str, str]:
         "Longevity": "Healthspan, aging biology and prevention signals lead today's edition.",
         "WHOOP & Wearables": "Wearable physiology, sleep, HRV, recovery and measurement evidence lead today's edition.",
         "AI & ChatGPT": "AI tools, model access, safety and workflow changes lead today's edition.",
+        "GTA 6": "A fresh GTA 6 signal made the edition without using old gaming filler.",
+        "NI Trout & Woodburn": "Northern Ireland trout stocking and Woodburn Reservoir signals lead today's edition.",
     }
     return {
         "topic": topic,
@@ -2912,7 +3228,11 @@ def write_data(
     generated_at: datetime,
     timezone_name: str,
     epub_name: str,
+    watch_state: dict[str, Any],
 ) -> None:
+    watch_pages = watch_state.get("pages", {})
+    if not isinstance(watch_pages, dict):
+        watch_pages = {}
     payload = {
         "title": "Morning Magazine",
         "generated_for": run_date.isoformat(),
@@ -2933,6 +3253,18 @@ def write_data(
             "pdf": f"archive/{run_date.isoformat()}/morning-magazine-{run_date.isoformat()}.pdf",
             "epub": f"archive/{run_date.isoformat()}/{epub_name}",
             "html": f"archive/{run_date.isoformat()}/index.html",
+        },
+        "watch_state": {
+            "generated_at": watch_state.get("generated_at", ""),
+            "pages": {
+                key: {
+                    "url": value.get("url", ""),
+                    "source": value.get("source", ""),
+                    "checked_at": value.get("checked_at", ""),
+                }
+                for key, value in watch_pages.items()
+                if isinstance(value, dict)
+            },
         },
         "feed_errors": errors,
     }
@@ -2960,13 +3292,15 @@ def main() -> None:
     prepare_output_dir(output_dir)
     restore_published_archive(output_dir)
     excluded_article_keys = load_previous_article_keys(output_dir, run_date)
-    articles, errors = collect_articles(
+    articles, errors, watch_state = collect_articles(
         run_date,
         generated_at,
         timezone_name,
         per_topic=max(1, args.per_topic),
+        output_dir=output_dir,
         excluded_keys=excluded_article_keys,
     )
+    articles = limit_news_articles(articles)
     books = select_book_recommendations(run_date, output_dir, count=args.book_count)
     daily_highlights = build_daily_highlights(articles)
     save_for_later = select_save_for_later(articles)
@@ -3035,7 +3369,9 @@ def main() -> None:
         generated_at,
         timezone_name,
         epub_name,
+        watch_state,
     )
+    write_watch_state(output_dir, watch_state)
     archive_current_edition(output_dir, run_date, pdf_name, epub_name, generated_at)
 
     print(f"Generated {output_dir / 'index.html'}")
