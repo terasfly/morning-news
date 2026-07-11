@@ -1902,8 +1902,8 @@ def render_html(
             <article class="story">
               <div class="story-meta">
                 <span>{idx:02d}</span>
-                <span>{html_escape(article.source)}</span>
-                <span>{html_escape(iso_to_local(article.published, timezone_name))}</span>
+                <span>Publikavo: {html_escape(article.source)}</span>
+                <span>Publikuota: {html_escape(iso_to_local(article.published, timezone_name))}</span>
               </div>
               <h3>{html_escape(article.title)}</h3>
               <div class="story-tags">
@@ -2317,7 +2317,7 @@ def build_epub(
             f"""
       {heading}
       <article>
-        <p class="kicker">{idx:02d} / {html_escape(article.source)} / {html_escape(iso_to_local(article.published, timezone_name))}</p>
+        <p class="kicker">{idx:02d} / Publikavo: {html_escape(article.source)} / Publikuota: {html_escape(iso_to_local(article.published, timezone_name))}</p>
         <h3>{html_escape(article.title)}</h3>
         <p class="tags">{html_escape(article.source_type)} | Hype: {html_escape(article.hype_level)}</p>
         <p>{html_escape(article.summary_en)}</p>
@@ -2609,6 +2609,10 @@ def article_block(article: Article, timezone_name: str, styles):
                 ],
             ),
             Paragraph(html_escape(article.title), styles["Headline"]),
+            Paragraph(
+                f"<b>Publikavo:</b> {html_escape(article.source)} &nbsp; <b>Publikuota:</b> {html_escape(iso_to_local(article.published, timezone_name))}",
+                styles["Source"],
+            ),
             Paragraph(
                 f"<b>Source type:</b> {html_escape(article.source_type)} &nbsp; <b>Hype:</b> {html_escape(article.hype_level)}",
                 styles["Source"],

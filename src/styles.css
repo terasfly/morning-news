@@ -914,6 +914,25 @@ a {
   letter-spacing: 0;
 }
 
+.article-source-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.article-source-line strong,
+.article-source-line time {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .article-main p {
   margin: 0;
   color: var(--muted);

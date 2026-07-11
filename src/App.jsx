@@ -292,6 +292,19 @@ function formatTime(value, timezone = "Europe/London") {
   }).format(new Date(value));
 }
 
+function formatPublished(value, timezone = "Europe/London") {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "date unavailable";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: timezone
+  }).format(date);
+}
+
 function dateParamFromLocation() {
   if (typeof window === "undefined") return null;
   return new URLSearchParams(window.location.search).get("date");
@@ -721,7 +734,7 @@ function App() {
         <section className="content-grid">
           <div className="article-list" aria-label="Magazine articles">
             {articles.map((article, index) => (
-              <ArticleCard article={article} index={index} key={`${article.url}-${index}`} />
+              <ArticleCard article={article} index={index} timezone={digest.timezone} key={`${article.url}-${index}`} />
             ))}
 
             {articles.length === 0 && (
@@ -903,7 +916,7 @@ function Step({ done, label, detail }) {
   );
 }
 
-function ArticleCard({ article, index }) {
+function ArticleCard({ article, index, timezone }) {
   const meta = topicMeta[article.topic] ?? topicMeta["AI & ChatGPT"];
   const Icon = meta.Icon;
   const summaryEn = article.summary_en || article.summary;
@@ -911,6 +924,8 @@ function ArticleCard({ article, index }) {
   const hypeLevel = article.hype_level || "Low";
   const practicalTakeaway = article.practical_takeaway || "Read the original source before treating this as a decision signal.";
   const hypeFilter = article.hype_filter || "Useful signal, but the practical impact is not settled yet.";
+  const publisher = article.source || "Source unavailable";
+  const publishedLabel = formatPublished(article.published, timezone);
 
   return (
     <article className={`article-card magazine-card tone-${meta.color}`}>
@@ -921,12 +936,19 @@ function ArticleCard({ article, index }) {
             <Icon size={15} />
             {article.tag || article.topic}
           </span>
-          <time>{formatTime(article.published)}</time>
           <span className="source-type-chip">{sourceType}</span>
           <span className={`hype-chip hype-${hypeLevel.toLowerCase()}`}>Hype {hypeLevel}</span>
         </div>
 
         <h2>{article.title}</h2>
+        <div className="article-source-line" aria-label="Publication details">
+          <span>
+            Publikavo: <strong>{publisher}</strong>
+          </span>
+          <span>
+            Publikuota: <time dateTime={article.published}>{publishedLabel}</time>
+          </span>
+        </div>
         <p>{summaryEn}</p>
 
         <section className="translation-block" aria-label="Lithuanian translation">
