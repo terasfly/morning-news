@@ -484,7 +484,10 @@ function App() {
   const nextDate = activeDate ? shiftIsoDate(activeDate, 1) : null;
   const previousAvailable = previousDate && archiveDates.has(previousDate);
   const nextAvailable = nextDate && archiveDates.has(nextDate);
-  const pdfHref = selectedDate && digest.archive?.pdf ? `${BASE_URL}${digest.archive.pdf}` : `${BASE_URL}latest.pdf`;
+  const pdfVersion = encodeURIComponent(digest.generated_at || activeDate || Date.now());
+  const pdfHref = selectedDate && digest.archive?.pdf
+    ? `${BASE_URL}${digest.archive.pdf}?v=${pdfVersion}`
+    : `${BASE_URL}latest.pdf?v=${pdfVersion}`;
 
   function openEdition(date) {
     if (!date || !archiveDates.has(date)) {
