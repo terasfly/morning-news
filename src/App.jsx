@@ -485,12 +485,9 @@ function App() {
   const previousAvailable = previousDate && archiveDates.has(previousDate);
   const nextAvailable = nextDate && archiveDates.has(nextDate);
   const fileVersion = encodeURIComponent(digest.generated_at || activeDate || Date.now());
-  const archivedReaderPath = digest.archive?.epub || digest.archive?.pdf;
-  const readerHref = selectedDate && archivedReaderPath
-    ? `${BASE_URL}${archivedReaderPath}?v=${fileVersion}`
-    : `${BASE_URL}latest.epub?v=${fileVersion}`;
-  const readerLabel = selectedDate && !digest.archive?.epub && digest.archive?.pdf ? "PDF" : "EPUB";
-  const ReaderIcon = readerLabel === "EPUB" ? BookOpen : FileText;
+  const pdfHref = selectedDate && digest.archive?.pdf
+    ? `${BASE_URL}${digest.archive.pdf}?v=${fileVersion}`
+    : `${BASE_URL}latest.pdf?v=${fileVersion}`;
 
   function openEdition(date) {
     if (!date || !archiveDates.has(date)) {
@@ -543,9 +540,9 @@ function App() {
           </a>
 
           <div className="topbar-actions">
-            <a className="ghost-button" href={readerHref} target="_blank" rel="noreferrer">
-              <ReaderIcon size={17} />
-              {readerLabel}
+            <a className="ghost-button" href={pdfHref} target="_blank" rel="noreferrer">
+              <FileText size={17} />
+              PDF
             </a>
             <button className="primary-button" type="button" onClick={handleCopy}>
               {copied ? <Check size={17} /> : <Copy size={17} />}
@@ -671,7 +668,7 @@ function App() {
             <div className="agent-steps">
               <Step done label="Reads sources" detail={sourceHealth} />
               <Step done label="Summarizes" detail={digest.summary_engine ?? "automatic"} />
-              <Step done={!loading} label="Publishes" detail="HTML, JSON, EPUB, PDF" />
+              <Step done={!loading} label="Publishes" detail="HTML, JSON, PDF" />
             </div>
           </aside>
         </section>

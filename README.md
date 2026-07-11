@@ -23,7 +23,7 @@ Vite will show a local URL, usually `http://127.0.0.1:5173/`.
 python build_ryto_signalas_pdf.py --timezone Europe/London
 ```
 
-The generator creates `public/ryto-signalas.json`, `public/latest.pdf`, `public/latest.epub` and a static HTML edition. The React app reads `ryto-signalas.json`; if the file is missing, it uses demo mode.
+The generator creates `public/ryto-signalas.json`, a phone-friendly `public/latest.pdf`, and a static HTML edition. The React app reads `ryto-signalas.json`; if the file is missing, it uses demo mode.
 
 For best summaries and Lithuanian translations, add a GitHub Actions secret named `OPENAI_API_KEY`. Without it, the generator still works with an extractive fallback and automatic translation.
 

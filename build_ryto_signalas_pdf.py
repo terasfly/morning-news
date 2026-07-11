@@ -20,7 +20,6 @@ from zoneinfo import ZoneInfo
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -45,10 +44,10 @@ DEFAULT_OUTPUT_DIR = ROOT / "public"
 DEFAULT_TIMEZONE = "Europe/London"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
 
-PAGE_W, PAGE_H = A4
-MARGIN_X = 17 * mm
-MARGIN_TOP = 15 * mm
-MARGIN_BOTTOM = 15 * mm
+PAGE_W, PAGE_H = 428, 926
+MARGIN_X = 22
+MARGIN_TOP = 30
+MARGIN_BOTTOM = 32
 CONTENT_W = PAGE_W - 2 * MARGIN_X
 
 INK = colors.HexColor("#14213D")
@@ -2246,7 +2245,7 @@ def render_html(
       <p class="kicker">Personal daily edition</p>
       <h1>MORNING MAGAZINE</h1>
       <p class="deck">{html_escape(cover_theme.get("label", "Balanced edition"))}. {html_escape(cover_theme.get("detail", ""))} - {html_escape(format_date_en(run_date))}</p>
-      <a class="download" href="{html_escape(epub_name)}">Download EPUB</a>
+      <a class="download" href="{html_escape(pdf_name)}">Download PDF</a>
     </div>
   </section>
   <main>
@@ -2562,19 +2561,22 @@ def draw_page(canvas, doc):
 def make_styles(fonts: tuple[str, str, str]):
     regular, bold, italic = fonts
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle("Masthead", parent=styles["Normal"], fontName=bold, fontSize=32, leading=35, textColor=INK, alignment=TA_CENTER, spaceAfter=3))
-    styles.add(ParagraphStyle("Kicker", parent=styles["Normal"], fontName=bold, fontSize=8.5, leading=10, textColor=GOLD, alignment=TA_CENTER, spaceAfter=5))
-    styles.add(ParagraphStyle("Deck", parent=styles["Normal"], fontName=italic, fontSize=11.3, leading=15, textColor=MUTED, alignment=TA_CENTER, spaceAfter=11))
-    styles.add(ParagraphStyle("Lead", parent=styles["Normal"], fontName=regular, fontSize=10.8, leading=15.6, textColor=INK, alignment=TA_JUSTIFY, spaceAfter=10))
-    styles.add(ParagraphStyle("SectionLabel", parent=styles["Normal"], fontName=bold, fontSize=8, leading=9.5, textColor=GOLD, spaceAfter=2))
+    styles.add(ParagraphStyle("Masthead", parent=styles["Normal"], fontName=bold, fontSize=27, leading=30, textColor=INK, alignment=TA_CENTER, spaceAfter=3))
+    styles.add(ParagraphStyle("Kicker", parent=styles["Normal"], fontName=bold, fontSize=9.2, leading=11, textColor=GOLD, alignment=TA_CENTER, spaceAfter=5))
+    styles.add(ParagraphStyle("Deck", parent=styles["Normal"], fontName=italic, fontSize=11.6, leading=15, textColor=MUTED, alignment=TA_CENTER, spaceAfter=10))
+    styles.add(ParagraphStyle("Lead", parent=styles["Normal"], fontName=regular, fontSize=11.6, leading=16.2, textColor=INK, alignment=TA_LEFT, spaceAfter=10))
+    styles.add(ParagraphStyle("SectionLabel", parent=styles["Normal"], fontName=bold, fontSize=8.4, leading=10, textColor=GOLD, spaceAfter=2))
+    styles.add(ParagraphStyle("ColumnLabel", parent=styles["Normal"], fontName=bold, fontSize=8.4, leading=10, textColor=INK, spaceAfter=3))
     styles.add(ParagraphStyle("SectionTitle", parent=styles["Normal"], fontName=bold, fontSize=18, leading=21, textColor=INK, spaceAfter=7))
-    styles.add(ParagraphStyle("Headline", parent=styles["Normal"], fontName=bold, fontSize=15.5, leading=18.5, textColor=INK, spaceAfter=5))
-    styles.add(ParagraphStyle("Body", parent=styles["Normal"], fontName=regular, fontSize=9.8, leading=13.8, textColor=colors.HexColor("#20242A"), alignment=TA_JUSTIFY, spaceAfter=7))
-    styles.add(ParagraphStyle("Lithuanian", parent=styles["Normal"], fontName=regular, fontSize=9.4, leading=13.4, textColor=colors.HexColor("#2E3C5E"), alignment=TA_JUSTIFY, spaceAfter=7))
-    styles.add(ParagraphStyle("Source", parent=styles["Normal"], fontName=regular, fontSize=8.3, leading=10.6, textColor=MUTED, spaceAfter=2))
-    styles.add(ParagraphStyle("Insight", parent=styles["Normal"], fontName=regular, fontSize=8.8, leading=11.8, textColor=colors.HexColor("#31446C"), leftIndent=7, spaceBefore=3, spaceAfter=4))
-    styles.add(ParagraphStyle("Small", parent=styles["Normal"], fontName=regular, fontSize=8.2, leading=10.4, textColor=MUTED, alignment=TA_CENTER))
-    styles.add(ParagraphStyle("IndexItem", parent=styles["Normal"], fontName=regular, fontSize=9.2, leading=12.2, textColor=INK))
+    styles.add(ParagraphStyle("Headline", parent=styles["Normal"], fontName=bold, fontSize=16, leading=19, textColor=INK, spaceAfter=5))
+    styles.add(ParagraphStyle("Body", parent=styles["Normal"], fontName=regular, fontSize=11, leading=15.2, textColor=colors.HexColor("#20242A"), alignment=TA_LEFT, spaceAfter=7))
+    styles.add(ParagraphStyle("BodyColumn", parent=styles["Normal"], fontName=regular, fontSize=9.8, leading=13.1, textColor=colors.HexColor("#20242A"), alignment=TA_LEFT, spaceAfter=0))
+    styles.add(ParagraphStyle("LithuanianColumn", parent=styles["Normal"], fontName=regular, fontSize=9.8, leading=13.1, textColor=colors.HexColor("#2E3C5E"), alignment=TA_LEFT, spaceAfter=0))
+    styles.add(ParagraphStyle("Lithuanian", parent=styles["Normal"], fontName=regular, fontSize=10.8, leading=15, textColor=colors.HexColor("#2E3C5E"), alignment=TA_LEFT, spaceAfter=7))
+    styles.add(ParagraphStyle("Source", parent=styles["Normal"], fontName=regular, fontSize=8.8, leading=11.2, textColor=MUTED, spaceAfter=2))
+    styles.add(ParagraphStyle("Insight", parent=styles["Normal"], fontName=regular, fontSize=9.4, leading=12.4, textColor=colors.HexColor("#31446C"), leftIndent=7, spaceBefore=3, spaceAfter=4))
+    styles.add(ParagraphStyle("Small", parent=styles["Normal"], fontName=regular, fontSize=8.6, leading=11, textColor=MUTED, alignment=TA_CENTER))
+    styles.add(ParagraphStyle("IndexItem", parent=styles["Normal"], fontName=regular, fontSize=9.6, leading=12.6, textColor=INK))
     return styles
 
 
@@ -2584,6 +2586,37 @@ def source_link(label: str, url: str) -> str:
 
 def article_block(article: Article, timezone_name: str, styles):
     source = source_link(f"{article.source}, {iso_to_local(article.published, timezone_name)}", article.url)
+    column_gap = 8
+    column_w = (CONTENT_W - column_gap) / 2
+    summary_table = Table(
+        [
+            [
+                Paragraph("English", styles["ColumnLabel"]),
+                Paragraph("Lietuviskai", styles["ColumnLabel"]),
+            ],
+            [
+                Paragraph(html_escape(article.summary_en), styles["BodyColumn"]),
+                Paragraph(html_escape(article.summary_lt), styles["LithuanianColumn"]),
+            ],
+        ],
+        colWidths=[column_w, column_w],
+    )
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), SOFT_BLUE),
+                ("BACKGROUND", (0, 1), (0, 1), colors.HexColor("#FFFAF0")),
+                ("BACKGROUND", (1, 1), (1, 1), colors.HexColor("#F3F7FF")),
+                ("BOX", (0, 0), (-1, -1), 0.35, RULE),
+                ("INNERGRID", (0, 0), (-1, -1), 0.2, colors.HexColor("#E2D6BD")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
     return KeepTogether(
         [
             Spacer(1, 8),
@@ -2601,9 +2634,8 @@ def article_block(article: Article, timezone_name: str, styles):
                 f"<b>Source type:</b> {html_escape(article.source_type)} &nbsp; <b>Hype:</b> {html_escape(article.hype_level)}",
                 styles["Source"],
             ),
-            Paragraph(html_escape(article.summary_en), styles["Body"]),
-            Paragraph("<b>Lietuviškai</b>", styles["Source"]),
-            Paragraph(html_escape(article.summary_lt), styles["Lithuanian"]),
+            summary_table,
+            Spacer(1, 4),
             Paragraph(f"<b>Praktiškai:</b> {html_escape(article.practical_takeaway)}", styles["Insight"]),
             Paragraph(f"<b>Hype filtras:</b> {html_escape(article.hype_filter)}", styles["Insight"]),
             Paragraph(f"Source: {source}", styles["Source"]),
@@ -2744,7 +2776,7 @@ def build_pdf(
     pdf_path = output_dir / pdf_name
     doc = BaseDocTemplate(
         str(pdf_path),
-        pagesize=A4,
+        pagesize=(PAGE_W, PAGE_H),
         leftMargin=MARGIN_X,
         rightMargin=MARGIN_X,
         topMargin=MARGIN_TOP,
