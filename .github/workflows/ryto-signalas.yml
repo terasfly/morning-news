@@ -6,8 +6,10 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: "0 5 * * *"
-    - cron: "0 6 * * *"
+    # GitHub warns that jobs at the start of an hour can be delayed or dropped.
+    # Retry off-peak through the morning; the London-time guard below publishes
+    # at most once per day and handles GMT/BST automatically.
+    - cron: "17 5-9 * * *"
 
 permissions:
   contents: read
@@ -21,6 +23,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
