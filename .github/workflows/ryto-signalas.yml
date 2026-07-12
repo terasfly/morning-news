@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
   schedule:
     # GitHub warns that jobs at the start of an hour can be delayed or dropped.
-    # Retry off-peak through the morning; the London-time guard below publishes
-    # at most once per day and handles GMT/BST automatically.
-    - cron: "17 5-9 * * *"
+    # Retry every five minutes through the morning; the London-time guard below
+    # publishes at most once per day and handles GMT/BST automatically.
+    - cron: "*/5 5-9 * * *"
 
 permissions:
   contents: read

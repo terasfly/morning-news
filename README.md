@@ -36,4 +36,4 @@ npm run preview
 
 ## GitHub Pages
 
-Workflow `.github/workflows/ryto-signalas.yml` starts trying at 06:17 `Europe/London` and retries through the morning if GitHub delays or drops a scheduled run. A London-time guard ensures that only one edition is published per day. It runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages.
+Workflow `.github/workflows/ryto-signalas.yml` starts trying at 06:00 `Europe/London` and retries every five minutes through the morning if GitHub delays or drops a scheduled run. A London-time guard ensures that only one edition is published per day. It runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages.
