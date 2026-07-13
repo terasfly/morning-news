@@ -244,6 +244,7 @@ const topicMeta = {
 
 const TOPIC_ORDER = TOPICS.filter((topic) => topic.id !== "all").map((topic) => topic.id);
 const BASE_URL = import.meta.env.BASE_URL;
+const GITHUB_WORKFLOW_URL = "https://github.com/terasfly/morning-news/actions/workflows/ryto-signalas.yml";
 
 function topicRank(topic) {
   const index = TOPIC_ORDER.indexOf(topic);
@@ -564,6 +565,10 @@ function App() {
           </a>
 
           <div className="topbar-actions">
+            <a className="ghost-button" href={GITHUB_WORKFLOW_URL} target="_blank" rel="noreferrer">
+              <RefreshCw size={17} />
+              Update via GitHub
+            </a>
             <a className="ghost-button" href={pdfHref} target="_blank" rel="noreferrer">
               <FileText size={17} />
               PDF
