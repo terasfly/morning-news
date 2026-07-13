@@ -1,0 +1,73 @@
+name: Cloud Morning Trigger
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron is UTC. These pairs cover both GMT and BST; the London-time
+    # guard below permits only 06:45, 06:55, 07:05 and 07:15 local time.
+    - cron: "45,55 5,6 * * *"
+    - cron: "5,15 6,7 * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cloud-morning-trigger
+  cancel-in-progress: false
+
+jobs:
+  trigger-if-stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check London time and public edition
+        id: edition
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          now = datetime.now(ZoneInfo("Europe/London"))
+          today = now.strftime("%Y-%m-%d")
+          local_time = now.strftime("%H:%M")
+          allowed_times = {"06:45", "06:55", "07:05", "07:15"}
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+          published_for = ""
+
+          try:
+              request = urllib.request.Request(
+                  f"https://terasfly.github.io/morning-news/ryto-signalas.json?t={int(now.timestamp())}",
+                  headers={"Cache-Control": "no-cache"},
+              )
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  published_for = json.loads(response.read().decode("utf-8")).get("generated_for", "")
+          except (OSError, urllib.error.URLError, json.JSONDecodeError, UnicodeDecodeError):
+              published_for = ""
+
+          should_run = event_name == "workflow_dispatch" or (
+              local_time in allowed_times and published_for != today
+          )
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"date={today}\n")
+              output.write(f"local_time={local_time}\n")
+              output.write(f"published_for={published_for}\n")
+              output.write(f"should_run={'true' if should_run else 'false'}\n")
+          PY
+
+      - name: Start newspaper workflow
+        if: steps.edition.outputs.should_run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ryto-signalas.yml --ref main --repo "$GITHUB_REPOSITORY"
+
+      - name: Report no update needed
+        if: steps.edition.outputs.should_run != 'true'
+        run: |
+          echo "No update needed. London time=${{ steps.edition.outputs.local_time }}, published_for=${{ steps.edition.outputs.published_for }}."
