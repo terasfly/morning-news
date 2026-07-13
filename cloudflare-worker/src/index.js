@@ -1,7 +1,7 @@
 const REPOSITORY = "terasfly/morning-news";
 const WORKFLOW = "ryto-signalas.yml";
 const EDITION_URL = "https://terasfly.github.io/morning-news/ryto-signalas.json";
-const LONDON_SLOTS = new Set(["07:35", "07:45", "07:55", "08:05"]);
+const LONDON_SLOTS = new Set(["06:00", "06:10", "06:20", "06:30"]);
 
 function londonNow(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -60,13 +60,12 @@ async function runScheduledUpdate(env, scheduledTime) {
   }
 
   const publishedFor = await publicEdition();
-  const forceTest = london.date === "2026-07-13" && london.time === "07:35";
-  if (!forceTest && publishedFor === london.date) {
+  if (publishedFor === london.date) {
     return { status: "skipped", reason: "edition already published", publishedFor, ...london };
   }
 
   await dispatchWorkflow(env);
-  return { status: "dispatched", forceTest, publishedFor, ...london };
+  return { status: "dispatched", publishedFor, ...london };
 }
 
 export default {

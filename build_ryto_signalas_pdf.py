@@ -321,6 +321,10 @@ TOPICS: list[dict[str, Any]] = [
     },
 ]
 
+# WHOOP is the primary section in every edition; preserve the relative order
+# of all other topics while moving it to the front for collection and output.
+TOPICS.sort(key=lambda topic: topic["name"] != "WHOOP & Wearables")
+
 
 BOOK_LIBRARY: list[dict[str, str]] = [
     {
@@ -2077,11 +2081,18 @@ def limit_news_articles(articles: list[Article], limit: int = MAX_NEWS_ARTICLES)
     if len(articles) <= limit:
         return sorted(articles, key=article_sort_value)
 
-    pinned = sorted(
+    whoop_lead = sorted(
+        [article for article in articles if article.topic == "WHOOP & Wearables"],
+        key=lambda article: (article.score, article.published),
+        reverse=True,
+    )[:1]
+    fresh_signals = sorted(
         [article for article in articles if article.topic in ALWAYS_INCLUDE_FRESH_TOPICS],
         key=lambda article: (article.score, article.published),
         reverse=True,
-    )[:limit]
+    )
+    whoop_keys = {stable_article_key(article) for article in whoop_lead}
+    pinned = (whoop_lead + [article for article in fresh_signals if stable_article_key(article) not in whoop_keys])[:limit]
     pinned_keys = {stable_article_key(article) for article in pinned}
     remaining = [article for article in articles if stable_article_key(article) not in pinned_keys]
     remaining = sorted(
@@ -2107,7 +2118,7 @@ def build_cover_theme(articles: list[Article]) -> dict[str, str]:
     scores: dict[str, int] = {}
     for article in articles:
         scores[article.topic] = scores.get(article.topic, 0) + max(article.score, 1)
-    topic = max(scores.items(), key=lambda item: item[1])[0]
+    topic = "WHOOP & Wearables" if any(article.topic == "WHOOP & Wearables" for article in articles) else max(scores.items(), key=lambda item: item[1])[0]
     details = {
         "Brain Research": "Brain signals, cognition, diagnosis and nervous-system research lead today's edition.",
         "Longevity": "Healthspan, aging biology and prevention signals lead today's edition.",

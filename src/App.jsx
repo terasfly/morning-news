@@ -201,9 +201,9 @@ const FALLBACK_DIGEST = {
 
 const TOPICS = [
   { id: "all", label: "All", Icon: Sparkles },
+  { id: "WHOOP & Wearables", label: "WHOOP", Icon: Watch },
   { id: "Brain Research", label: "Brain", Icon: Brain },
   { id: "Longevity", label: "Longevity", Icon: HeartPulse },
-  { id: "WHOOP & Wearables", label: "WHOOP", Icon: Watch },
   { id: "AI & ChatGPT", label: "AI", Icon: Cpu },
   { id: "GTA 6", label: "GTA 6", Icon: Gamepad2 },
   { id: "NI Trout & Woodburn", label: "Trout", Icon: Fish }
