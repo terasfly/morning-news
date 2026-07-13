@@ -36,4 +36,4 @@ npm run preview
 
 ## GitHub Pages
 
-The primary laptop-independent scheduler is the Cloudflare Worker in `cloudflare-worker/`. It checks at 06:52 `Europe/London`, then retries at 07:02, 07:12 and 07:22. When the public edition is stale it dispatches `.github/workflows/ryto-signalas.yml`, which runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages. GitHub schedules remain as a redundant fallback.
+The primary laptop-independent scheduler is the Cloudflare Worker in `cloudflare-worker/`. It checks at 07:35 `Europe/London`, then retries at 07:45, 07:55 and 08:05. When the public edition is stale it dispatches `.github/workflows/ryto-signalas.yml`, which runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages. GitHub schedules remain as a redundant fallback.
