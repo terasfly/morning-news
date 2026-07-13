@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     # GitHub cron is UTC. These pairs cover both GMT and BST; the London-time
-    # guard below permits only 06:45, 06:55, 07:05 and 07:15 local time.
-    - cron: "45,55 5,6 * * *"
-    - cron: "5,15 6,7 * * *"
+    # guard below permits only 06:52, 07:02, 07:12 and 07:22 local time.
+    - cron: "52 5,6 * * *"
+    - cron: "2,12,22 6,7 * * *"
 
 permissions:
   actions: write
@@ -36,7 +36,7 @@ jobs:
           now = datetime.now(ZoneInfo("Europe/London"))
           today = now.strftime("%Y-%m-%d")
           local_time = now.strftime("%H:%M")
-          allowed_times = {"06:45", "06:55", "07:05", "07:15"}
+          allowed_times = {"06:52", "07:02", "07:12", "07:22"}
           event_name = os.environ.get("GITHUB_EVENT_NAME", "")
           published_for = ""
 
@@ -50,7 +50,8 @@ jobs:
           except (OSError, urllib.error.URLError, json.JSONDecodeError, UnicodeDecodeError):
               published_for = ""
 
-          should_run = event_name == "workflow_dispatch" or (
+          force_test = today == "2026-07-13" and local_time == "06:52"
+          should_run = event_name == "workflow_dispatch" or force_test or (
               local_time in allowed_times and published_for != today
           )
 

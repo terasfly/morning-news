@@ -36,4 +36,4 @@ npm run preview
 
 ## GitHub Pages
 
-The cloud-only workflow `.github/workflows/cloud-morning-trigger.yml` checks at 06:45 `Europe/London`, then retries at 06:55, 07:05 and 07:15 without requiring a local computer. When the public edition is stale it dispatches `.github/workflows/ryto-signalas.yml`, which runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages. A London-time guard ensures that only one edition is published per day.
+The cloud-only workflow `.github/workflows/cloud-morning-trigger.yml` checks at 06:52 `Europe/London`, then retries at 07:02, 07:12 and 07:22 without requiring a local computer. When the public edition is stale it dispatches `.github/workflows/ryto-signalas.yml`, which runs the Python magazine generator, builds the React app and publishes `dist/` to GitHub Pages. A London-time guard ensures that only one edition is published per day.
