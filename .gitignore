@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 public/
 node_modules/
+.wrangler/
 dist/
 tmp/
 *.log
