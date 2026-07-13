@@ -1,6 +1,6 @@
 # Cloudflare morning trigger
 
-This Worker checks the public Morning Magazine at 06:00 Europe/London and retries at 06:10, 06:20 and 06:30. It dispatches the GitHub Actions newspaper workflow only when the public edition is stale. Both GMT and BST are handled by UTC cron pairs plus a London-time guard in the Worker.
+This Worker checks the public Morning Magazine at 06:00 Europe/London and retries every three minutes through 06:30. It dispatches the GitHub Actions newspaper workflow only when the public edition is stale. Both GMT and BST are handled by UTC cron pairs plus a London-time guard in the Worker.
 
 Required encrypted Worker secrets:
 

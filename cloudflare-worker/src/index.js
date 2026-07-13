@@ -1,7 +1,19 @@
 const REPOSITORY = "terasfly/morning-news";
 const WORKFLOW = "ryto-signalas.yml";
 const EDITION_URL = "https://terasfly.github.io/morning-news/ryto-signalas.json";
-const LONDON_SLOTS = new Set(["06:00", "06:10", "06:20", "06:30"]);
+const LONDON_SLOTS = new Set([
+  "06:00",
+  "06:03",
+  "06:06",
+  "06:09",
+  "06:12",
+  "06:15",
+  "06:18",
+  "06:21",
+  "06:24",
+  "06:27",
+  "06:30"
+]);
 
 function londonNow(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
