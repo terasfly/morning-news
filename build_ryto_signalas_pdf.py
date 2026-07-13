@@ -177,6 +177,7 @@ TOPICS: list[dict[str, Any]] = [
         "description": "Official OpenAI updates, ChatGPT releases, agents, models, and AI product shifts.",
         "min_score": 36,
         "strict_fresh": True,
+        "priority_keywords": ["chatgpt", "openai", "gpt"],
         "keywords": [
             "ai",
             "artificial intelligence",
@@ -321,9 +322,9 @@ TOPICS: list[dict[str, Any]] = [
     },
 ]
 
-# WHOOP is the primary section in every edition; preserve the relative order
-# of all other topics while moving it to the front for collection and output.
-TOPICS.sort(key=lambda topic: topic["name"] != "WHOOP & Wearables")
+# WHOOP leads every edition and fresh ChatGPT/OpenAI news follows immediately.
+topic_priority = {"WHOOP & Wearables": 0, "AI & ChatGPT": 1}
+TOPICS.sort(key=lambda topic: topic_priority.get(topic["name"], 2))
 
 
 BOOK_LIBRARY: list[dict[str, str]] = [
@@ -1427,6 +1428,9 @@ def make_article(
         recency = max(0, int(24 - (age_hours / 3)))
     summary_bonus = 24 if summary_is_useful(title, summary) else 0
     score = keyword_hits * 6 + title_hits * 4 + summary_bonus + recency
+    priority_keywords = topic.get("priority_keywords", [])
+    score += sum(12 for keyword in priority_keywords if keyword.lower() in combined)
+    score += sum(8 for keyword in priority_keywords if keyword.lower() in title.lower())
     if "google news" in feed_source.lower():
         score -= 20
     if topic["name"].lower() in topic_text:
@@ -2086,13 +2090,19 @@ def limit_news_articles(articles: list[Article], limit: int = MAX_NEWS_ARTICLES)
         key=lambda article: (article.score, article.published),
         reverse=True,
     )[:1]
+    chatgpt_lead = sorted(
+        [article for article in articles if article.topic == "AI & ChatGPT"],
+        key=lambda article: (article.score, article.published),
+        reverse=True,
+    )[:1]
     fresh_signals = sorted(
         [article for article in articles if article.topic in ALWAYS_INCLUDE_FRESH_TOPICS],
         key=lambda article: (article.score, article.published),
         reverse=True,
     )
-    whoop_keys = {stable_article_key(article) for article in whoop_lead}
-    pinned = (whoop_lead + [article for article in fresh_signals if stable_article_key(article) not in whoop_keys])[:limit]
+    priority_leads = whoop_lead + chatgpt_lead
+    priority_keys = {stable_article_key(article) for article in priority_leads}
+    pinned = (priority_leads + [article for article in fresh_signals if stable_article_key(article) not in priority_keys])[:limit]
     pinned_keys = {stable_article_key(article) for article in pinned}
     remaining = [article for article in articles if stable_article_key(article) not in pinned_keys]
     remaining = sorted(
