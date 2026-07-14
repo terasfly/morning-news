@@ -206,7 +206,8 @@ const TOPICS = [
   { id: "Brain Research", label: "Brain", Icon: Brain },
   { id: "Longevity", label: "Longevity", Icon: HeartPulse },
   { id: "GTA 6", label: "GTA 6", Icon: Gamepad2 },
-  { id: "NI Trout & Woodburn", label: "Trout", Icon: Fish }
+  { id: "NI Trout & Woodburn", label: "Trout", Icon: Fish },
+  { id: "Belfast Jobs — Knotts Forestside", label: "Knotts Jobs", Icon: Newspaper }
 ];
 
 const WINDOWS = [
@@ -239,6 +240,10 @@ const topicMeta = {
   "NI Trout & Woodburn": {
     Icon: Fish,
     color: "blue"
+  },
+  "Belfast Jobs — Knotts Forestside": {
+    Icon: Newspaper,
+    color: "green"
   }
 };
 

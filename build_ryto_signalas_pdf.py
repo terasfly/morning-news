@@ -59,7 +59,11 @@ SOFT_BLUE = colors.HexColor("#E8EEF5")
 SOFT_GREEN = colors.HexColor("#E7F0EA")
 GOLD = colors.HexColor("#B7853B")
 
-USER_AGENT = "MorningMagazine/2.0 (+https://github.com/terasfly/morning-news)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 "
+    "MorningMagazine/2.0"
+)
 PUBLISHED_DATA_URL = os.getenv(
     "PUBLISHED_DATA_URL",
     "https://terasfly.github.io/morning-news/ryto-signalas.json",
@@ -69,7 +73,7 @@ ARCHIVE_INDEX_URL = f"{PUBLISHED_SITE_URL}/archive/index.json"
 NEWS_WINDOW_START_HOUR = 18
 WATCH_STATE_NAME = "watch-state.json"
 MAX_NEWS_ARTICLES = 5
-ALWAYS_INCLUDE_FRESH_TOPICS = {"GTA 6", "NI Trout & Woodburn"}
+ALWAYS_INCLUDE_FRESH_TOPICS = {"GTA 6", "NI Trout & Woodburn", "Belfast Jobs — Knotts Forestside"}
 
 
 TOPICS: list[dict[str, Any]] = [
@@ -139,8 +143,14 @@ TOPICS: list[dict[str, Any]] = [
     {
         "name": "WHOOP & Wearables",
         "tag": "WHOOP and wearables",
-        "description": "WHOOP, wearables, HRV, sleep tracking, bloodwork, and clinical studies.",
+        "description": "Only newly published research, trials, and validation work that explicitly uses WHOOP.",
         "min_score": 30,
+        "strict_fresh": True,
+        "required_keyword_groups": [
+            ["whoop"],
+            ["study", "trial", "research", "validation", "cohort", "randomized", "randomised", "experiment"],
+        ],
+        "europe_pmc_queries": ["WHOOP"],
         "keywords": [
             "whoop",
             "wearable",
@@ -159,15 +169,15 @@ TOPICS: list[dict[str, Any]] = [
         "feeds": [
             (
                 "Google News WHOOP",
-                "https://news.google.com/rss/search?q=WHOOP%20%28medical%20study%20OR%20clinical%20trial%20OR%20bloodwork%20OR%20sleep%20OR%20HRV%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+                "https://news.google.com/rss/search?q=WHOOP%20%28study%20OR%20research%20OR%20clinical%20trial%20OR%20validation%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
             (
                 "Google News Wearable Medicine",
-                "https://news.google.com/rss/search?q=%28wearable%20OR%20smartwatch%20OR%20fitness%20tracker%29%20%28medical%20study%20OR%20clinical%20trial%20OR%20digital%20health%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+                "https://news.google.com/rss/search?q=WHOOP%20%28wearable%20medicine%20OR%20medical%20study%20OR%20clinical%20trial%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
             (
                 "Google News Sleep HRV",
-                "https://news.google.com/rss/search?q=%28sleep%20tracking%20OR%20heart%20rate%20variability%20OR%20HRV%29%20%28study%20OR%20research%29%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen",
+                "https://news.google.com/rss/search?q=WHOOP%20%28sleep%20OR%20heart%20rate%20variability%20OR%20HRV%29%20%28study%20OR%20research%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
             ),
         ],
     },
@@ -320,9 +330,100 @@ TOPICS: list[dict[str, Any]] = [
             }
         ],
     },
+    {
+        "name": "Belfast Jobs — Knotts Forestside",
+        "tag": "Knotts Forestside jobs",
+        "description": "Kitchen, bakery, food-production, and preparation vacancies for the new Knotts Bakery at Forestside, Belfast.",
+        "min_score": 18,
+        "strict_fresh": True,
+        "required_keyword_groups": [
+            ["knotts"],
+            ["forestside", "bt8 6fx"],
+            ["kitchen", "food production", "food preparation", "bakery production", "baker", "chef", "sandwich", "salad", "vacancy", "hiring", "job"],
+        ],
+        "keywords": [
+            "knotts",
+            "knotts bakery",
+            "forestside",
+            "bt8 6fx",
+            "kitchen",
+            "food production",
+            "food preparation",
+            "bakery production",
+            "baker",
+            "chef",
+            "sandwich",
+            "salad",
+            "vacancy",
+            "hiring",
+            "job",
+        ],
+        "feeds": [
+            (
+                "Google News Knotts Forestside Jobs",
+                "https://news.google.com/rss/search?q=%22Knotts%20Bakery%22%20%28Forestside%20OR%20%22BT8%206FX%22%29%20%28job%20OR%20vacancy%20OR%20hiring%20OR%20kitchen%20OR%20baker%29%20when%3A7d&hl=en-GB&gl=GB&ceid=GB%3Aen",
+            ),
+        ],
+        "watch_pages": [
+            {
+                "id": "knotts-indeed-company-jobs",
+                "source": "Indeed — Knotts Bakery jobs",
+                "url": "https://uk.indeed.com/cmp/Knotts-Bakery-Corries-Meats-Ltd/jobs",
+                "keywords": ["knotts", "forestside", "bt8 6fx", "kitchen", "food production", "food preparation", "baker", "chef", "sandwich", "salad"],
+                "required_keyword_groups": [
+                    ["knotts"],
+                    ["forestside", "bt8 6fx"],
+                    ["kitchen", "food production", "food preparation", "bakery production", "baker", "chef", "sandwich", "salad"],
+                ],
+                "surface_initial_match": True,
+                "change_title": "Knotts Bakery Forestside kitchen vacancy found",
+                "change_summary_en": "A monitored Knotts Bakery jobs page now contains a Forestside or BT8 6FX reference together with a kitchen, bakery, food-production, preparation, baker, or chef role. Open the source immediately to confirm the exact job title, hours, pay, closing date, and application method. The alert requires both the Forestside location and a relevant food-production role so that general Knotts vacancies elsewhere are not mistaken for the new Forestside branch.",
+                "change_summary_lt": "Stebimame „Knotts Bakery“ darbo skelbimų puslapyje atsirado „Forestside“ arba BT8 6FX nuoroda kartu su virtuvės, kepyklos, maisto gamybos, paruošimo, kepėjo ar virėjo darbu. Nedelsiant atidaryk šaltinį ir patikrink tikslų pareigų pavadinimą, valandas, atlyginimą, skelbimo pabaigą ir kandidatavimo būdą. Pranešimas rodomas tik tada, kai kartu randama „Forestside“ vieta ir tinkamas maisto gamybos darbas, todėl bendri „Knotts“ skelbimai kitose vietose nebus supainioti.",
+                "practical_takeaway": "Open the vacancy now and verify that the workplace is Forestside, Belfast before applying.",
+                "hype_filter": "Low. This is a direct job-page match, but confirm the branch address and whether the vacancy is still open.",
+                "hype_level": "Low",
+            },
+            {
+                "id": "knotts-forestside-nijobs-search",
+                "source": "NIJobs search — Knotts Bakery Belfast",
+                "url": "https://www.nijobs.com/jobs/knotts-bakery/in-belfast",
+                "keywords": ["knotts", "forestside", "bt8 6fx", "kitchen", "food production", "food preparation", "baker", "chef", "sandwich", "salad"],
+                "required_keyword_groups": [
+                    ["knotts"],
+                    ["forestside", "bt8 6fx"],
+                    ["kitchen", "food production", "food preparation", "bakery production", "baker", "chef", "sandwich", "salad"],
+                ],
+                "surface_initial_match": True,
+                "change_title": "Possible Knotts Bakery Forestside kitchen job found on NIJobs",
+                "change_summary_en": "The targeted NIJobs search now contains Knotts Bakery, Forestside or BT8 6FX, and a relevant kitchen or bakery role. Open the result to confirm that all terms refer to the same live vacancy rather than separate search-page elements. Check the address, hours, pay, closing date, and application instructions before acting.",
+                "change_summary_lt": "Tikslinėje „NIJobs“ paieškoje dabar kartu matomi „Knotts Bakery“, „Forestside“ arba BT8 6FX ir tinkamas virtuvės ar kepyklos darbas. Atidaryk rezultatą ir patikrink, ar visi žodžiai priklauso tam pačiam aktyviam skelbimui, o ne atskiroms paieškos puslapio dalims. Prieš kandidatuodamas patikrink adresą, valandas, atlyginimą, skelbimo pabaigą ir kandidatavimo instrukcijas.",
+                "practical_takeaway": "Verify that the NIJobs result is a live Knotts vacancy at Forestside, then apply promptly.",
+                "hype_filter": "Medium. Search pages can combine unrelated text, so verify the exact listing before applying.",
+                "hype_level": "Medium",
+            },
+            {
+                "id": "knotts-forestside-reed-search",
+                "source": "Reed search — Knotts Bakery Belfast",
+                "url": "https://www.reed.co.uk/jobs/knotts-bakery-jobs-in-belfast",
+                "keywords": ["knotts", "forestside", "bt8 6fx", "kitchen", "food production", "food preparation", "baker", "chef", "sandwich", "salad"],
+                "required_keyword_groups": [
+                    ["knotts"],
+                    ["forestside", "bt8 6fx"],
+                    ["kitchen", "food production", "food preparation", "bakery production", "baker", "chef", "sandwich", "salad"],
+                ],
+                "surface_initial_match": True,
+                "change_title": "Possible Knotts Bakery Forestside kitchen job found on Reed",
+                "change_summary_en": "The targeted Reed search now contains Knotts Bakery, Forestside or BT8 6FX, and a relevant kitchen or bakery role. Open the result and verify the exact employer, workplace, hours, pay, closing date, and application instructions.",
+                "change_summary_lt": "Tikslinėje „Reed“ paieškoje dabar kartu matomi „Knotts Bakery“, „Forestside“ arba BT8 6FX ir tinkamas virtuvės ar kepyklos darbas. Atidaryk rezultatą ir patikrink tikslų darbdavį, darbo vietą, valandas, atlyginimą, skelbimo pabaigą ir kandidatavimo instrukcijas.",
+                "practical_takeaway": "Verify that the Reed result is a live Knotts vacancy at Forestside, then apply promptly.",
+                "hype_filter": "Medium. Search pages can combine unrelated text, so verify the exact listing before applying.",
+                "hype_level": "Medium",
+            },
+        ],
+    },
 ]
 
-# WHOOP leads every edition and fresh ChatGPT/OpenAI news follows immediately.
+# A genuinely fresh WHOOP study leads when one exists; no old WHOOP item is inserted as filler.
 topic_priority = {"WHOOP & Wearables": 0, "AI & ChatGPT": 1}
 TOPICS.sort(key=lambda topic: topic_priority.get(topic["name"], 2))
 
@@ -1080,6 +1181,24 @@ def article_is_in_window(article: Article, start_utc: datetime, end_utc: datetim
     return bool(published and start_utc <= published <= end_utc)
 
 
+def text_matches_keyword_groups(text: str, groups: list[list[str]] | None) -> bool:
+    if not groups:
+        return True
+    lowered = clean_text(text).lower()
+    def contains(keyword: str) -> bool:
+        normalized = clean_text(keyword).lower()
+        if not normalized:
+            return False
+        return bool(re.search(rf"(?<!\w){re.escape(normalized)}(?!\w)", lowered))
+
+    return all(any(contains(keyword) for keyword in group) for group in groups if group)
+
+
+def article_matches_topic_rules(article: Article, topic: dict[str, Any]) -> bool:
+    material = f"{article.title} {article.summary} {article.summary_en} {article.source}"
+    return text_matches_keyword_groups(material, topic.get("required_keyword_groups"))
+
+
 def format_window_for_log(start_utc: datetime, end_utc: datetime, timezone_name: str) -> str:
     tz = ZoneInfo(timezone_name)
     start = start_utc.astimezone(tz).strftime("%Y-%m-%d %H:%M")
@@ -1362,9 +1481,13 @@ def collect_watch_page_articles(
             "content_hash": content_hash,
             "checked_at": generated_at.isoformat(timespec="seconds"),
             "snippet": truncate_words(snippet, 160),
+            "matched": text_matches_keyword_groups(text, page.get("required_keyword_groups")),
         }
 
-        if previous_hash and previous_hash != content_hash:
+        matched = bool(pages_state[page_id]["matched"])
+        changed = bool(previous_hash and previous_hash != content_hash)
+        initial_match = bool(not previous_hash and page.get("surface_initial_match"))
+        if matched and (changed or initial_match):
             articles.append(make_watch_article(topic, page, url, generated_at, snippet))
 
     return articles, errors
@@ -1407,6 +1530,55 @@ def parse_feed(data: bytes, fallback_source: str, topic: dict[str, Any]) -> list
         entries.append(make_article(topic, title, summary, url, source, published_dt, topic_text, fallback_source))
 
     return [entry for entry in entries if entry.title and entry.url]
+
+
+def collect_europe_pmc_articles(topic: dict[str, Any]) -> list[Article]:
+    articles: list[Article] = []
+    for query in topic.get("europe_pmc_queries", []):
+        params = urllib.parse.urlencode(
+            {
+                "query": f"({query}) sort_date:y",
+                "format": "json",
+                "pageSize": 25,
+                "resultType": "core",
+            }
+        )
+        payload = json.loads(fetch_url(f"https://www.ebi.ac.uk/europepmc/webservices/rest/search?{params}").decode("utf-8"))
+        results = payload.get("resultList", {}).get("result", [])
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            title = clean_text(str(result.get("title", "")))
+            abstract = html_to_text(str(result.get("abstractText", "")).encode("utf-8"))
+            source_id = clean_text(str(result.get("source", "MED")))
+            record_id = clean_text(str(result.get("id", "")))
+            if not title or not record_id:
+                continue
+            published_dt = parse_datetime(
+                str(
+                    result.get("firstPublicationDate")
+                    or result.get("electronicPublicationDate")
+                    or result.get("dateOfCreation")
+                    or ""
+                )
+            )
+            journal = clean_text(str(result.get("journalTitle", "")))
+            if not journal and isinstance(result.get("journalInfo"), dict):
+                journal = clean_text(str(result["journalInfo"].get("journal", {}).get("title", "")))
+            article = make_article(
+                topic,
+                title,
+                abstract,
+                f"https://europepmc.org/article/{urllib.parse.quote(source_id)}/{urllib.parse.quote(record_id)}",
+                f"Europe PMC{f' / {journal}' if journal else ''}",
+                published_dt,
+                " ".join(topic["keywords"]).lower(),
+                "Europe PMC",
+            )
+            article.score += 24
+            article.source_type = "Peer-reviewed / scientific source"
+            articles.append(article)
+    return articles
 
 
 def make_article(
@@ -1813,6 +1985,8 @@ def build_practical_takeaway(article: Article, source_type: str) -> str:
         return "Useful only if it changes official release timing, platform availability, trailers, gameplay details, or Rockstar statements."
     if article.topic == "NI Trout & Woodburn":
         return "Useful for local angling planning; confirm the exact reservoir, date, species, quantity and permit rules before acting."
+    if article.topic == "Belfast Jobs — Knotts Forestside":
+        return "Confirm that the vacancy is still open and that the workplace is the new Knotts Bakery at Forestside, Belfast before applying."
     return "Useful context, but read the source before treating it as a decision signal."
 
 
@@ -1853,9 +2027,21 @@ def collect_articles(
             except (urllib.error.URLError, TimeoutError, ET.ParseError, ValueError, OSError) as exc:
                 errors.append(f"{source}: {exc}")
 
+        if topic.get("europe_pmc_queries"):
+            try:
+                candidates.extend(collect_europe_pmc_articles(topic))
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, ValueError, OSError) as exc:
+                errors.append(f"Europe PMC {topic['name']}: {exc}")
+
         watch_candidates, watch_errors = collect_watch_page_articles(topic, run_date, generated_at, previous_watch_state, next_watch_state)
         candidates.extend(watch_candidates)
         errors.extend(watch_errors)
+
+        original_rule_count = len(candidates)
+        candidates = [article for article in candidates if article_matches_topic_rules(article, topic)]
+        skipped_topic_mismatch = original_rule_count - len(candidates)
+        if skipped_topic_mismatch:
+            errors.append(f"Skipped {skipped_topic_mismatch} {topic['name']} items that did not match all required terms.")
 
         if topic.get("strict_fresh"):
             original_count = len(candidates)
@@ -1892,10 +2078,7 @@ def collect_articles(
                 break
 
         if topic["name"] == "WHOOP & Wearables" and picked == 0:
-            fallback = whoop_science_fallback(run_date, excluded_keys, seen)
-            if fallback:
-                selected.append(annotate_article(fallback))
-                errors.append("Used an evergreen WHOOP scientific validation item because no stronger fresh WHOOP update was selected.")
+            errors.append("No newly published WHOOP study or trial matched the overnight freshness window; no older WHOOP item was used.")
 
     if skipped_existing:
         errors.append(f"Skipped {skipped_existing} articles already shown in today's published edition.")
