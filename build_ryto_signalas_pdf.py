@@ -70,6 +70,8 @@ PUBLISHED_DATA_URL = os.getenv(
 )
 PUBLISHED_SITE_URL = os.getenv("PUBLISHED_SITE_URL", "https://terasfly.github.io/morning-news").rstrip("/")
 ARCHIVE_INDEX_URL = f"{PUBLISHED_SITE_URL}/archive/index.json"
+BOOK_HISTORY_NAME = "book-history.json"
+BOOK_CATALOG_NAME = "books.json"
 NEWS_WINDOW_START_HOUR = 18
 WATCH_STATE_NAME = "watch-state.json"
 MAX_NEWS_ARTICLES = 5
@@ -1232,6 +1234,15 @@ def restore_published_archive(output_dir: Path) -> None:
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
         return
 
+    history_path = output_dir / BOOK_HISTORY_NAME
+    try:
+        raw_history = fetch_url(f"{PUBLISHED_SITE_URL}/{BOOK_HISTORY_NAME}?t={cache_bust}", timeout=15)
+        history_payload = json.loads(raw_history.decode("utf-8"))
+        if isinstance(history_payload.get("recommendations"), list):
+            history_path.write_text(json.dumps(history_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError, AttributeError):
+        pass
+
     editions = index_payload.get("editions", [])
     if not isinstance(editions, list):
         return
@@ -2114,6 +2125,25 @@ def make_book_recommendation(book: dict[str, str]) -> BookRecommendation:
 
 def load_previous_book_titles(output_dir: Path, run_date: date) -> set[str]:
     used: set[str] = set()
+    history_path = output_dir / BOOK_HISTORY_NAME
+    try:
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        for item in history.get("recommendations", []):
+            if isinstance(item, dict) and item.get("title") and item.get("date") != run_date.isoformat():
+                used.add(book_key(item["title"]))
+    except (json.JSONDecodeError, OSError, AttributeError):
+        pass
+
+    local_json = output_dir / "ryto-signalas.json"
+    try:
+        payload = json.loads(local_json.read_text(encoding="utf-8"))
+        if payload.get("generated_for") != run_date.isoformat():
+            for book in payload.get("book_recommendations", []):
+                if isinstance(book, dict) and book.get("title"):
+                    used.add(book_key(book["title"]))
+    except (json.JSONDecodeError, OSError, AttributeError):
+        pass
+
     archive_dir = output_dir / "archive"
     if not archive_dir.exists():
         return used
@@ -2136,8 +2166,8 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
     count = 3
     previous_titles = load_previous_book_titles(output_dir, run_date)
     available = [book for book in BOOK_LIBRARY if book_key(book["title"]) not in previous_titles]
-    if len(available) < count:
-        available = BOOK_LIBRARY[:]
+    if not available:
+        return []
 
     seed = run_date.toordinal()
     primary_pool = [
@@ -2146,12 +2176,6 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
         if book_metadata(book["title"])["book_type"] in TRUE_STORY_BOOK_TYPES
     ]
     if not primary_pool:
-        primary_pool = [
-            book
-            for book in BOOK_LIBRARY
-            if book_metadata(book["title"])["book_type"] in TRUE_STORY_BOOK_TYPES
-        ]
-    if not primary_pool:
         primary_pool = available
 
     picks: list[dict[str, str]] = []
@@ -2159,8 +2183,6 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
     picks.append(first_pick)
 
     remaining = [book for book in available if book_key(book["title"]) != book_key(first_pick["title"])]
-    if len(remaining) < count - 1:
-        remaining = [book for book in BOOK_LIBRARY if book_key(book["title"]) != book_key(first_pick["title"])]
     for book in rotated_books(remaining, seed * 3 + 7):
         if len(picks) >= count:
             break
@@ -2169,6 +2191,40 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
         picks.append(book)
 
     return [make_book_recommendation(book) for book in picks[:count]]
+
+
+def write_book_catalog(output_dir: Path, generated_at: datetime) -> None:
+    books = [asdict(make_book_recommendation(book)) for book in BOOK_LIBRARY]
+    payload = {
+        "title": "Book Library",
+        "generated_at": generated_at.isoformat(timespec="seconds"),
+        "total": len(books),
+        "books": books,
+    }
+    (output_dir / BOOK_CATALOG_NAME).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def write_book_history(output_dir: Path, run_date: date, books: list[BookRecommendation]) -> None:
+    path = output_dir / BOOK_HISTORY_NAME
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        recommendations = payload.get("recommendations", [])
+    except (json.JSONDecodeError, OSError, AttributeError):
+        recommendations = []
+    if not isinstance(recommendations, list):
+        recommendations = []
+
+    current_date = run_date.isoformat()
+    recommendations = [
+        item for item in recommendations
+        if isinstance(item, dict) and item.get("date") != current_date
+    ]
+    recommendations.extend(
+        {"date": current_date, "title": book.title, "author": book.author}
+        for book in books
+    )
+    payload = {"title": "Book recommendation history", "recommendations": recommendations}
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def build_daily_highlights(articles: list[Article]) -> list[DigestNote]:
@@ -3575,6 +3631,8 @@ def main() -> None:
         epub_name,
         watch_state,
     )
+    write_book_catalog(output_dir, generated_at)
+    write_book_history(output_dir, run_date, books)
     write_watch_state(output_dir, watch_state)
     archive_current_edition(output_dir, run_date, pdf_name, epub_name, generated_at)
 

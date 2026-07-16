@@ -90,6 +90,8 @@ jobs:
         if: steps.london-time.outputs.should_run == 'true'
         run: |
           test -f public/ryto-signalas.json
+          test -f public/books.json
+          test -f public/book-history.json
           test -f public/latest.pdf
           test -f public/watch-state.json
           test -f "public/archive/${{ steps.london-time.outputs.date }}/morning-magazine-${{ steps.london-time.outputs.date }}.pdf"
