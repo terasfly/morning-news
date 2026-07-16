@@ -1,6 +1,14 @@
 const REPOSITORY = "terasfly/morning-news";
 const WORKFLOW = "ryto-signalas.yml";
 const EDITION_URL = "https://terasfly.github.io/morning-news/ryto-signalas.json";
+const SITE_ORIGINS = new Set([
+  "https://terasfly.github.io",
+  "http://127.0.0.1:4173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://localhost:5173"
+]);
+const MANUAL_COOLDOWN_SECONDS = 5 * 60;
 const LONDON_SLOTS = new Set([
   "06:00",
   "06:03",
@@ -65,6 +73,29 @@ async function dispatchWorkflow(env) {
   }
 }
 
+function corsHeaders(origin) {
+  return {
+    "Access-Control-Allow-Origin": SITE_ORIGINS.has(origin) ? origin : "https://terasfly.github.io",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin"
+  };
+}
+
+async function manualRateLimit() {
+  const cache = caches.default;
+  const key = new Request("https://morning-news-trigger.internal/manual-cooldown");
+  if (await cache.match(key)) return false;
+  await cache.put(
+    key,
+    new Response("1", {
+      headers: { "Cache-Control": `public, max-age=${MANUAL_COOLDOWN_SECONDS}` }
+    })
+  );
+  return true;
+}
+
 async function runScheduledUpdate(env, scheduledTime) {
   const london = londonNow(new Date(scheduledTime));
   if (!LONDON_SLOTS.has(london.time)) {
@@ -89,12 +120,35 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+    const origin = request.headers.get("Origin") || "";
+
+    if (request.method === "OPTIONS" && url.pathname === "/trigger") {
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    }
+
     if (request.method === "POST" && url.pathname === "/trigger") {
-      if (request.headers.get("Authorization") !== `Bearer ${env.TRIGGER_SECRET}`) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      const hasSecret = request.headers.get("Authorization") === `Bearer ${env.TRIGGER_SECRET}`;
+      if (!hasSecret && !SITE_ORIGINS.has(origin)) {
+        return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders(origin) });
       }
-      await dispatchWorkflow(env);
-      return Response.json({ status: "dispatched", at: new Date().toISOString() });
+      if (!hasSecret && !(await manualRateLimit())) {
+        return Response.json(
+          { error: "An update was already started recently", retry_after: MANUAL_COOLDOWN_SECONDS },
+          { status: 429, headers: corsHeaders(origin) }
+        );
+      }
+      try {
+        await dispatchWorkflow(env);
+        return Response.json(
+          { status: "dispatched", at: new Date().toISOString() },
+          { headers: corsHeaders(origin) }
+        );
+      } catch (error) {
+        return Response.json(
+          { error: error instanceof Error ? error.message : "Could not start the update" },
+          { status: 502, headers: corsHeaders(origin) }
+        );
+      }
     }
 
     const london = londonNow();

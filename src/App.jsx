@@ -249,7 +249,8 @@ const topicMeta = {
 
 const TOPIC_ORDER = TOPICS.filter((topic) => topic.id !== "all").map((topic) => topic.id);
 const BASE_URL = import.meta.env.BASE_URL;
-const GITHUB_WORKFLOW_URL = "https://github.com/terasfly/morning-news/actions/workflows/ryto-signalas.yml";
+const UPDATE_TRIGGER_URL =
+  import.meta.env.VITE_UPDATE_TRIGGER_URL || "https://morning-news-trigger.tomastomas095.workers.dev/trigger";
 
 function topicRank(topic) {
   const index = TOPIC_ORDER.indexOf(topic);
@@ -328,6 +329,11 @@ function dateParamFromLocation() {
   return new URLSearchParams(window.location.search).get("date");
 }
 
+function isBooksView() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("view") === "books";
+}
+
 function shiftIsoDate(value, days) {
   const date = new Date(`${value}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -381,6 +387,31 @@ function App() {
   const [archiveIndex, setArchiveIndex] = useState({ editions: [] });
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [navNotice, setNavNotice] = useState("");
+  const [bookCatalog, setBookCatalog] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [updateState, setUpdateState] = useState("idle");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadBookCatalog() {
+      try {
+        const response = await fetch(`${BASE_URL}books.json?t=${Date.now()}`);
+        if (!response.ok) throw new Error("Book catalog not found");
+        const data = cleanObject(await response.json());
+        if (active) setBookCatalog(data.books ?? []);
+      } catch {
+        if (active) setBookCatalog(FALLBACK_DIGEST.book_recommendations ?? []);
+      } finally {
+        if (active) setCatalogLoading(false);
+      }
+    }
+
+    loadBookCatalog();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -519,6 +550,10 @@ function App() {
     ? `${BASE_URL}${digest.archive.pdf}?v=${fileVersion}`
     : `${BASE_URL}latest.pdf?v=${fileVersion}`;
 
+  if (isBooksView()) {
+    return <BooksLibrary books={bookCatalog} loading={catalogLoading} />;
+  }
+
   function openEdition(date) {
     if (!date || !archiveDates.has(date)) {
       setNavNotice(date && date > activeDate ? "The next edition has not been published yet." : "This edition is not available in the archive.");
@@ -549,6 +584,53 @@ function App() {
     }
   }
 
+  async function handleUpdateNow() {
+    if (updateState === "triggering" || updateState === "waiting") return;
+    setUpdateState("triggering");
+    setNavNotice("");
+
+    try {
+      const response = await fetch(UPDATE_TRIGGER_URL, { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 429) {
+        setUpdateState("waiting");
+        setNavNotice("Atnaujinimas jau paleistas. Palauk kelias minutes – puslapis atsinaujins automatiškai.");
+        waitForPublishedUpdate(digest.generated_at);
+        return;
+      }
+      if (!response.ok) throw new Error(payload.error || "Nepavyko paleisti atnaujinimo");
+
+      setUpdateState("waiting");
+      setNavNotice("Atnaujinimas paleistas dabar. Paprastai užtrunka kelias minutes; puslapis atsinaujins automatiškai.");
+      waitForPublishedUpdate(digest.generated_at);
+    } catch {
+      setUpdateState("error");
+      setNavNotice("Nepavyko paleisti atnaujinimo. Pabandyk dar kartą po minutės.");
+    }
+  }
+
+  function waitForPublishedUpdate(previousGeneratedAt) {
+    let attempts = 0;
+    const check = async () => {
+      attempts += 1;
+      try {
+        const response = await fetch(`${BASE_URL}ryto-signalas.json?t=${Date.now()}`);
+        const latest = response.ok ? await response.json() : null;
+        if (latest?.generated_at && latest.generated_at !== previousGeneratedAt) {
+          setUpdateState("updated");
+          setNavNotice("Atnaujinta! Įkeliama naujausia versija…");
+          window.setTimeout(() => window.location.reload(), 900);
+          return;
+        }
+      } catch {
+        // Keep checking while GitHub builds and publishes the new edition.
+      }
+      if (attempts < 40) window.setTimeout(check, 15000);
+      else setUpdateState("idle");
+    };
+    window.setTimeout(check, 15000);
+  }
+
   function resetFilters() {
     setSelectedTopic("all");
     setWindowFilter("all");
@@ -570,20 +652,43 @@ function App() {
           </a>
 
           <div className="topbar-actions">
-            <a className="ghost-button" href={GITHUB_WORKFLOW_URL} target="_blank" rel="noreferrer">
-              <RefreshCw size={17} />
-              Update via GitHub
+            <a className="ghost-button" href={`${BASE_URL}?view=books`}>
+              <BookOpen size={17} />
+              Visos knygos
             </a>
             <a className="ghost-button" href={pdfHref} target="_blank" rel="noreferrer">
               <FileText size={17} />
               PDF
             </a>
-            <button className="primary-button" type="button" onClick={handleCopy}>
+            <button
+              className="primary-button update-now-button"
+              type="button"
+              onClick={handleUpdateNow}
+              disabled={updateState === "triggering" || updateState === "waiting"}
+            >
+              <RefreshCw size={17} className={updateState === "triggering" || updateState === "waiting" ? "spin" : ""} />
+              {updateState === "triggering"
+                ? "Paleidžiama…"
+                : updateState === "waiting"
+                  ? "Atnaujinama…"
+                  : updateState === "updated"
+                    ? "Atnaujinta"
+                    : "Atnaujinti dabar"}
+            </button>
+            <button className="ghost-button" type="button" onClick={handleCopy}>
               {copied ? <Check size={17} /> : <Copy size={17} />}
               {copiedLabel}
             </button>
           </div>
         </header>
+
+        <section className="rail-section top-pulse" aria-label="Today's topics">
+          <div className="section-head">
+            <span>Section pulse</span>
+            <Flame size={17} />
+          </div>
+          <TopicPulse articles={digest.articles ?? []} />
+        </section>
 
         <section className="date-navigator" aria-label="Edition navigation">
           <button
@@ -778,14 +883,6 @@ function App() {
             {weeklySummary.length > 0 && (
               <NoteSection title="Savaitinis signalas" notes={weeklySummary} Icon={Activity} compact />
             )}
-
-            <section className="rail-section">
-              <div className="section-head">
-                <span>Section pulse</span>
-                <Flame size={17} />
-              </div>
-              <TopicPulse articles={digest.articles ?? []} />
-            </section>
 
             <section className="rail-section">
               <div className="section-head">
@@ -1006,7 +1103,10 @@ function BookRecommendations({ books }) {
           <span>Books Section</span>
           <h2>Three books for the Shantaram / Great Alone mood</h2>
         </div>
-        <BookOpen size={22} />
+        <a className="book-library-link" href={`${BASE_URL}?view=books`}>
+          <BookOpen size={18} />
+          Visos knygos
+        </a>
       </div>
 
       <div className="book-list">
@@ -1046,6 +1146,98 @@ function BookRecommendations({ books }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function BooksLibrary({ books, loading }) {
+  const [query, setQuery] = useState("");
+  const search = query.trim().toLowerCase();
+  const uniqueBooks = [...new Map(books.map((book) => [`${book.title}|${book.author}`.toLowerCase(), book])).values()];
+  const filteredBooks = uniqueBooks.filter((book) => {
+    if (!search) return true;
+    return [book.title, book.author, book.book_type, book.description_en, book.summary_lt]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(search);
+  });
+
+  return (
+    <main className="news-app">
+      <section className="dashboard-shell books-library-page" aria-label="Visos knygos">
+        <header className="topbar">
+          <a className="brand" href={BASE_URL} aria-label="Grįžti į Morning Magazine">
+            <span className="brand-icon"><BookOpen size={22} /></span>
+            <span>
+              <strong>Knygų biblioteka</strong>
+              <small>Visos rekomendacijos vienoje vietoje</small>
+            </span>
+          </a>
+          <div className="topbar-actions">
+            <a className="primary-button" href={BASE_URL}>
+              <ChevronLeft size={17} />
+              Grįžti į naujienas
+            </a>
+          </div>
+        </header>
+
+        <section className="library-hero">
+          <div>
+            <span>Knygų katalogas</span>
+            <h1>Visos knygos vienoje vietoje</h1>
+            <p>Čia rasi visas skirtingas knygas su tais pačiais išsamiais aprašymais kaip dienos rekomendacijose.</p>
+          </div>
+          <strong>{uniqueBooks.length}</strong>
+        </section>
+
+        <section className="library-tools" aria-label="Knygų paieška">
+          <div className="search-box library-search">
+            <Search size={18} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ieškoti pagal pavadinimą, autorių ar tipą"
+              aria-label="Ieškoti knygų"
+            />
+          </div>
+          <span>Rodoma {filteredBooks.length} iš {uniqueBooks.length}</span>
+        </section>
+
+        {loading ? (
+          <div className="empty-state"><RefreshCw className="spin" size={26} /><strong>Kraunamos knygos...</strong></div>
+        ) : filteredBooks.length ? (
+          <section className="library-grid">
+            {filteredBooks.map((book) => (
+              <article className="book-card" key={`${book.title}-${book.author}`}>
+                {book.cover_url && <img className="book-cover" src={book.cover_url} alt={`${book.title} cover`} loading="lazy" />}
+                <div className="book-details">
+                  <div className="article-meta">
+                    <span><BookOpen size={15} />{book.book_type || "Fiction"}</span>
+                    <span>{book.author}</span>
+                  </div>
+                  <h3>{book.title}</h3>
+                  <div className="book-facts">
+                    <span>{book.length || "Length varies by edition"}</span>
+                    <span>Goodreads: {book.goodreads_rating || "rating unavailable"}</span>
+                  </div>
+                  <p>{book.description_en || book.summary_en}</p>
+                  <section className="insight-block">
+                    <p><strong>Why it may appeal:</strong> {book.why_it_may_appeal}</p>
+                  </section>
+                  <section className="translation-block">
+                    <h4>Lietuviškai</h4>
+                    <p>{book.summary_lt}</p>
+                  </section>
+                  <a href={book.search_url} target="_blank" rel="noreferrer"><ExternalLink size={15} />Ieškoti knygos</a>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <div className="empty-state"><Search size={26} /><strong>Pagal šią paiešką knygų nerasta</strong></div>
+        )}
+      </section>
+    </main>
   );
 }
 
