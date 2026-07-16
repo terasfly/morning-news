@@ -682,6 +682,40 @@ function App() {
           </div>
         </header>
 
+        <section className="main-actions" aria-label="Pagrindiniai veiksmai">
+          <button
+            className="main-action-card update-action"
+            type="button"
+            onClick={handleUpdateNow}
+            disabled={updateState === "triggering" || updateState === "waiting"}
+          >
+            <span className="main-action-icon">
+              <RefreshCw size={26} className={updateState === "triggering" || updateState === "waiting" ? "spin" : ""} />
+            </span>
+            <span>
+              <strong>
+                {updateState === "triggering"
+                  ? "PALEIDŽIAMA…"
+                  : updateState === "waiting"
+                    ? "ATNAUJINAMA…"
+                    : updateState === "updated"
+                      ? "ATNAUJINTA"
+                      : "ATNAUJINTI DABAR"}
+              </strong>
+              <small>Gauti naujausias naujienas nelaukiant ryto</small>
+            </span>
+          </button>
+
+          <a className="main-action-card books-action" href={`${BASE_URL}?view=books`}>
+            <span className="main-action-icon"><BookOpen size={26} /></span>
+            <span>
+              <strong>VISOS KNYGOS</strong>
+              <small>{bookCatalog.length || 32} skirtingos knygos su visais aprašymais</small>
+            </span>
+            <ChevronRight size={24} />
+          </a>
+        </section>
+
         <section className="rail-section top-pulse" aria-label="Today's topics">
           <div className="section-head">
             <span>Section pulse</span>

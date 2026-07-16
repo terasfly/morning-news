@@ -206,6 +206,96 @@ a {
   min-width: 154px;
 }
 
+.main-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.main-action-card {
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.main-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 54px rgba(34, 44, 38, 0.17);
+}
+
+.main-action-card:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.main-action-card > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.main-action-card strong {
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  letter-spacing: 0.01em;
+}
+
+.main-action-card small {
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.main-action-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.update-action {
+  color: white;
+  background: #20362b;
+}
+
+.update-action .main-action-icon {
+  color: #20362b;
+  background: white;
+}
+
+.update-action small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.books-action {
+  border-color: #d9b86f;
+  color: #5f430b;
+  background: linear-gradient(135deg, #fff3d7, #fffaf0);
+}
+
+.books-action .main-action-icon {
+  color: white;
+  background: var(--amber);
+}
+
+.books-action > svg {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.books-action small {
+  color: #805f1d;
+}
+
 .date-navigator {
   display: grid;
   grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
@@ -1407,6 +1497,10 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .main-actions {
+    grid-template-columns: 1fr;
+  }
+
   .morning-visual {
     min-height: 170px;
   }
@@ -1475,6 +1569,16 @@ a {
 
   .topbar-actions > * {
     flex: 1 1 44%;
+  }
+
+  .main-action-card {
+    min-height: 92px;
+    padding: 16px;
+  }
+
+  .main-action-icon {
+    width: 46px;
+    height: 46px;
   }
 
   .morning-copy h1 {
