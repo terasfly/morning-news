@@ -1243,6 +1243,15 @@ def restore_published_archive(output_dir: Path) -> None:
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError, AttributeError):
         pass
 
+    catalog_path = output_dir / BOOK_CATALOG_NAME
+    try:
+        raw_catalog = fetch_url(f"{PUBLISHED_SITE_URL}/{BOOK_CATALOG_NAME}?t={cache_bust}", timeout=15)
+        catalog_payload = json.loads(raw_catalog.decode("utf-8"))
+        if isinstance(catalog_payload.get("books"), list):
+            catalog_path.write_text(json.dumps(catalog_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError, AttributeError):
+        pass
+
     editions = index_payload.get("editions", [])
     if not isinstance(editions, list):
         return
@@ -2123,6 +2132,195 @@ def make_book_recommendation(book: dict[str, str]) -> BookRecommendation:
     )
 
 
+def recommendation_from_payload(book: dict[str, Any]) -> BookRecommendation | None:
+    title = clean_text(str(book.get("title", "")))
+    author = clean_text(str(book.get("author", "")))
+    if not title or not author:
+        return None
+    query = urllib.parse.quote_plus(f"{title} {author} book")
+    summary_en = clean_text(str(book.get("summary_en", "")))
+    description_en = clean_text(str(book.get("description_en", ""))) or summary_en
+    return BookRecommendation(
+        title=title,
+        author=author,
+        book_type=clean_text(str(book.get("book_type", ""))) or "Fiction",
+        description_en=description_en,
+        why_it_may_appeal=clean_text(str(book.get("why_it_may_appeal", ""))) or "It matches your interest in immersive, human stories with emotional weight.",
+        length=clean_text(str(book.get("length", ""))) or "Length varies by edition",
+        goodreads_rating=clean_text(str(book.get("goodreads_rating", ""))) or "Goodreads rating unavailable",
+        cover_url=clean_text(str(book.get("cover_url", ""))),
+        summary_en=summary_en or description_en,
+        summary_lt=clean_text(str(book.get("summary_lt", ""))),
+        search_url=clean_text(str(book.get("search_url", ""))) or f"https://www.google.com/search?q={query}",
+    )
+
+
+def read_book_catalog(output_dir: Path) -> list[BookRecommendation]:
+    try:
+        payload = json.loads((output_dir / BOOK_CATALOG_NAME).read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, AttributeError):
+        return []
+    books = payload.get("books", [])
+    if not isinstance(books, list):
+        return []
+    parsed = [recommendation_from_payload(book) for book in books if isinstance(book, dict)]
+    return [book for book in parsed if book is not None]
+
+
+def books_recommended_on_date(output_dir: Path, run_date: date) -> list[BookRecommendation]:
+    try:
+        history = json.loads((output_dir / BOOK_HISTORY_NAME).read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, AttributeError):
+        return []
+    wanted = [
+        book_key(str(item.get("title", "")))
+        for item in history.get("recommendations", [])
+        if isinstance(item, dict) and item.get("date") == run_date.isoformat()
+    ]
+    if not wanted:
+        return []
+    known = {book_key(book.title): book for book in read_book_catalog(output_dir)}
+    known.update({book_key(book["title"]): make_book_recommendation(book) for book in BOOK_LIBRARY})
+    edition_paths = [
+        output_dir / "ryto-signalas.json",
+        output_dir / "archive" / run_date.isoformat() / "ryto-signalas.json",
+    ]
+    for path in edition_paths:
+        try:
+            edition = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError, AttributeError):
+            continue
+        for raw_book in edition.get("book_recommendations", []):
+            if isinstance(raw_book, dict):
+                book = recommendation_from_payload(raw_book)
+                if book:
+                    known[book_key(book.title)] = book
+    return [known[key] for key in wanted if key in known]
+
+
+def discover_books_with_openai(existing_titles: set[str], count: int) -> list[BookRecommendation]:
+    if count <= 0:
+        return []
+    existing = ", ".join(sorted(existing_titles))
+    prompt = f"""
+You curate books for a reader who loves Shantaram and The Great Alone: immersive places, adventure,
+wilderness, survival, strong relationships, emotional journeys, travel, and true-life stories.
+
+Suggest exactly {count} real, published books that are not in the existing-title list below. Never invent
+a title or author. Mix fiction and nonfiction when possible. Return only valid JSON shaped as
+{{"books": [{{"title": "", "author": "", "book_type": "", "description_en": "2-3 concise sentences",
+"why_it_may_appeal": "1 concise sentence", "length": "approximate pages or edition-dependent",
+"goodreads_rating": "Goodreads rating unavailable", "cover_url": "", "summary_en": "2 concise sentences",
+"summary_lt": "complete natural Lithuanian translation of summary_en"}}]}}.
+Do not guess a Goodreads rating or cover URL.
+
+Existing titles: {existing}
+""".strip()
+    parsed = call_openai_json(prompt, max_output_tokens=max(1500, count * 650))
+    raw_books = parsed.get("books", []) if parsed else []
+    if not isinstance(raw_books, list):
+        return []
+    discovered: list[BookRecommendation] = []
+    seen = set(existing_titles)
+    for raw_book in raw_books:
+        if not isinstance(raw_book, dict):
+            continue
+        book = recommendation_from_payload(raw_book)
+        if not book or book_key(book.title) in seen or not book.summary_lt:
+            continue
+        seen.add(book_key(book.title))
+        discovered.append(book)
+        if len(discovered) >= count:
+            break
+    return discovered
+
+
+def discover_books_from_open_library(
+    existing_titles: set[str],
+    count: int,
+) -> list[BookRecommendation]:
+    """Find real published books when AI discovery is unavailable or incomplete."""
+    if count <= 0:
+        return []
+    queries = ["subject:wilderness", "subject:survival", "subject:travel", "subject:adventure"]
+    candidates: list[dict[str, Any]] = []
+    for query in queries:
+        url = "https://openlibrary.org/search.json?" + urllib.parse.urlencode(
+            {
+                "q": query,
+                "fields": "key,title,author_name,first_publish_year,subject,number_of_pages_median,cover_i,ratings_count,edition_count",
+                "limit": 50,
+            }
+        )
+        try:
+            payload = json.loads(fetch_url(url, timeout=20).decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+            continue
+        docs = payload.get("docs", [])
+        if isinstance(docs, list):
+            candidates.extend(item for item in docs if isinstance(item, dict))
+
+    discovered: list[BookRecommendation] = []
+    seen = set(existing_titles)
+
+    def numeric_rank(item: dict[str, Any], field: str) -> int:
+        try:
+            return int(item.get(field) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    ranked_candidates = sorted(
+        candidates,
+        key=lambda item: (
+            numeric_rank(item, "ratings_count"),
+            numeric_rank(item, "edition_count"),
+            numeric_rank(item, "first_publish_year"),
+        ),
+        reverse=True,
+    )
+    for item in ranked_candidates:
+        title = clean_text(str(item.get("title", "")))
+        authors = item.get("author_name", [])
+        author = clean_text(str(authors[0])) if isinstance(authors, list) and authors else ""
+        key = book_key(title)
+        if not title or not author or key in seen:
+            continue
+        year = item.get("first_publish_year")
+        subjects = item.get("subject", [])
+        subject_names = [clean_text(str(value)) for value in subjects[:4]] if isinstance(subjects, list) else []
+        all_subjects = " ".join(clean_text(str(value)).lower() for value in subjects) if isinstance(subjects, list) else ""
+        if any(term in all_subjects for term in ("juvenile fiction", "juvenile literature", "children's", "young adult fiction")):
+            continue
+        themes = ", ".join(name.lower() for name in subject_names if name) or "adventure, place, and human resilience"
+        pages = item.get("number_of_pages_median")
+        length = f"Approx. {pages} pages (varies by edition)" if isinstance(pages, int) and pages > 0 else "Length varies by edition"
+        cover_id = item.get("cover_i")
+        cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if isinstance(cover_id, int) else ""
+        published = f", first published in {year}" if isinstance(year, int) else ""
+        summary_en = f"A real published book by {author}{published}, connected with {themes}. It may suit readers looking for immersive journeys, difficult places, survival, and strong human stories."
+        summary_lt = f"Tai tikra išleista {author} knyga, siejama su šiomis temomis: {themes}. Ji gali tikti ieškant įtraukiančių kelionių, sudėtingų vietų, išgyvenimo ir stiprių žmogiškų istorijų."
+        query = urllib.parse.quote_plus(f"{title} {author} book")
+        discovered.append(
+            BookRecommendation(
+                title=title,
+                author=author,
+                book_type="Adventure / travel",
+                description_en=summary_en,
+                why_it_may_appeal="It was found through adventure, wilderness, survival, or travel themes that match your reading taste.",
+                length=length,
+                goodreads_rating="Goodreads rating unavailable",
+                cover_url=cover_url,
+                summary_en=summary_en,
+                summary_lt=summary_lt,
+                search_url=f"https://www.google.com/search?q={query}",
+            )
+        )
+        seen.add(key)
+        if len(discovered) >= count:
+            break
+    return discovered
+
+
 def load_previous_book_titles(output_dir: Path, run_date: date) -> set[str]:
     used: set[str] = set()
     history_path = output_dir / BOOK_HISTORY_NAME
@@ -2164,10 +2362,17 @@ def load_previous_book_titles(output_dir: Path, run_date: date) -> set[str]:
 
 def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3) -> list[BookRecommendation]:
     count = 3
+    already_published_today = books_recommended_on_date(output_dir, run_date)
+    if len(already_published_today) >= count:
+        return already_published_today[:count]
+
     previous_titles = load_previous_book_titles(output_dir, run_date)
-    available = [book for book in BOOK_LIBRARY if book_key(book["title"]) not in previous_titles]
-    if not available:
-        return []
+    catalog_books = read_book_catalog(output_dir)
+    if not catalog_books:
+        catalog_books = [make_book_recommendation(book) for book in BOOK_LIBRARY]
+    catalog_titles = {book_key(book.title) for book in catalog_books}
+    unavailable_titles = previous_titles | catalog_titles
+    available = [book for book in BOOK_LIBRARY if book_key(book["title"]) not in unavailable_titles]
 
     seed = run_date.toordinal()
     primary_pool = [
@@ -2175,14 +2380,16 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
         for book in available
         if book_metadata(book["title"])["book_type"] in TRUE_STORY_BOOK_TYPES
     ]
-    if not primary_pool:
+    if not primary_pool and available:
         primary_pool = available
 
     picks: list[dict[str, str]] = []
-    first_pick = rotated_books(primary_pool, seed)[0]
-    picks.append(first_pick)
+    if primary_pool:
+        first_pick = rotated_books(primary_pool, seed)[0]
+        picks.append(first_pick)
 
-    remaining = [book for book in available if book_key(book["title"]) != book_key(first_pick["title"])]
+    picked_keys = {book_key(item["title"]) for item in picks}
+    remaining = [book for book in available if book_key(book["title"]) not in picked_keys]
     for book in rotated_books(remaining, seed * 3 + 7):
         if len(picks) >= count:
             break
@@ -2190,14 +2397,51 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
             continue
         picks.append(book)
 
-    return [make_book_recommendation(book) for book in picks[:count]]
+    recommendations = [make_book_recommendation(book) for book in picks[:count]]
+    needed = count - len(recommendations)
+    if needed:
+        used = unavailable_titles | {book_key(book.title) for book in recommendations}
+        recommendations.extend(discover_books_with_openai(used, needed))
+    needed = count - len(recommendations)
+    if needed:
+        used = unavailable_titles | {book_key(book.title) for book in recommendations}
+        recommendations.extend(discover_books_from_open_library(used, needed))
+    return recommendations[:count]
 
 
-def write_book_catalog(output_dir: Path, generated_at: datetime) -> None:
-    books = [asdict(make_book_recommendation(book)) for book in BOOK_LIBRARY]
+def write_book_catalog(
+    output_dir: Path,
+    generated_at: datetime,
+    run_date: date,
+    daily_books: list[BookRecommendation],
+) -> None:
+    known_books: list[BookRecommendation] = read_book_catalog(output_dir)
+    if not known_books:
+        known_books = [make_book_recommendation(book) for book in BOOK_LIBRARY]
+    previously_known_keys = {book_key(book.title) for book in known_books}
+    archive_dir = output_dir / "archive"
+    for path in archive_dir.glob("*/ryto-signalas.json") if archive_dir.exists() else []:
+        try:
+            archive_payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        for item in archive_payload.get("book_recommendations", []):
+            if isinstance(item, dict):
+                book = recommendation_from_payload(item)
+                if book:
+                    known_books.append(book)
+                    previously_known_keys.add(book_key(book.title))
+    known_books.extend(daily_books)
+
+    unique_books: dict[str, BookRecommendation] = {}
+    for book in known_books:
+        unique_books.setdefault(book_key(book.title), book)
+    books = [asdict(book) for book in unique_books.values()]
     payload = {
         "title": "Book Library",
         "generated_at": generated_at.isoformat(timespec="seconds"),
+        "last_added_on": run_date.isoformat(),
+        "added_today": len({book_key(book.title) for book in daily_books} - previously_known_keys),
         "total": len(books),
         "books": books,
     }
@@ -3631,7 +3875,7 @@ def main() -> None:
         epub_name,
         watch_state,
     )
-    write_book_catalog(output_dir, generated_at)
+    write_book_catalog(output_dir, generated_at, run_date, books)
     write_book_history(output_dir, run_date, books)
     write_watch_state(output_dir, watch_state)
     archive_current_edition(output_dir, run_date, pdf_name, epub_name, generated_at)
