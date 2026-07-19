@@ -14,6 +14,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, time, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -2532,6 +2533,16 @@ def cache_book_cover(output_dir: Path, book: BookRecommendation) -> str:
     return relative_path.as_posix()
 
 
+def cache_book_covers(output_dir: Path, books: list[BookRecommendation], workers: int = 6) -> None:
+    if not books:
+        return
+    worker_count = max(1, min(workers, len(books)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        cover_urls = list(executor.map(lambda book: cache_book_cover(output_dir, book), books))
+    for book, cover_url in zip(books, cover_urls):
+        book.cover_url = cover_url
+
+
 def write_book_catalog(
     output_dir: Path,
     generated_at: datetime,
@@ -2559,9 +2570,9 @@ def write_book_catalog(
     unique_books: dict[str, BookRecommendation] = {}
     for book in known_books:
         unique_books.setdefault(book_key(book.title), book)
-    for book in unique_books.values():
-        book.cover_url = cache_book_cover(output_dir, book)
-    books = [asdict(book) for book in unique_books.values()]
+    catalog_books = list(unique_books.values())
+    cache_book_covers(output_dir, catalog_books)
+    books = [asdict(book) for book in catalog_books]
     payload = {
         "title": "Book Library",
         "generated_at": generated_at.isoformat(timespec="seconds"),
@@ -3921,8 +3932,7 @@ def main() -> None:
     )
     articles = limit_news_articles(articles)
     books = select_book_recommendations(run_date, output_dir, count=args.book_count)
-    for book in books:
-        book.cover_url = cache_book_cover(output_dir, book)
+    cache_book_covers(output_dir, books, workers=3)
     daily_highlights = build_daily_highlights(articles)
     save_for_later = select_save_for_later(articles)
     weekly_summary = build_weekly_summary(run_date, articles)
