@@ -2167,6 +2167,16 @@ def read_book_catalog(output_dir: Path) -> list[BookRecommendation]:
     return [book for book in parsed if book is not None]
 
 
+def catalog_added_books_on_date(output_dir: Path, run_date: date) -> int:
+    try:
+        payload = json.loads((output_dir / BOOK_CATALOG_NAME).read_text(encoding="utf-8"))
+        if payload.get("last_added_on") != run_date.isoformat():
+            return 0
+        return max(0, int(payload.get("added_today", 0)))
+    except (json.JSONDecodeError, OSError, AttributeError, TypeError, ValueError):
+        return 0
+
+
 def books_recommended_on_date(output_dir: Path, run_date: date) -> list[BookRecommendation]:
     try:
         history = json.loads((output_dir / BOOK_HISTORY_NAME).read_text(encoding="utf-8"))
@@ -2363,7 +2373,7 @@ def load_previous_book_titles(output_dir: Path, run_date: date) -> set[str]:
 def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3) -> list[BookRecommendation]:
     count = 3
     already_published_today = books_recommended_on_date(output_dir, run_date)
-    if len(already_published_today) >= count:
+    if catalog_added_books_on_date(output_dir, run_date) >= count and len(already_published_today) >= count:
         return already_published_today[:count]
 
     previous_titles = load_previous_book_titles(output_dir, run_date)
