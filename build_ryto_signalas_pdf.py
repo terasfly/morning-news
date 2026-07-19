@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
+import io
 import json
 import os
 import re
 import shutil
+import textwrap
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -18,6 +20,8 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
+
+from PIL import Image as PILImage, ImageDraw, ImageFont
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
@@ -2419,6 +2423,115 @@ def select_book_recommendations(run_date: date, output_dir: Path, count: int = 3
     return recommendations[:count]
 
 
+def save_cover_image(data: bytes, destination: Path) -> bool:
+    try:
+        with PILImage.open(io.BytesIO(data)) as image:
+            image.load()
+            if image.width < 80 or image.height < 100:
+                return False
+            image = image.convert("RGB")
+            image.thumbnail((900, 1350), PILImage.Resampling.LANCZOS)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            image.save(destination, format="JPEG", quality=88, optimize=True)
+        return destination.exists() and destination.stat().st_size > 1_000
+    except (OSError, ValueError):
+        return False
+
+
+def open_library_cover_urls(book: BookRecommendation) -> list[str]:
+    query = urllib.parse.urlencode(
+        {
+            "q": f'title:"{book.title}" author:"{book.author}"',
+            "fields": "title,author_name,cover_i",
+            "limit": 8,
+        }
+    )
+    try:
+        payload = json.loads(fetch_url(f"https://openlibrary.org/search.json?{query}", timeout=12).decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return []
+    urls: list[str] = []
+    for item in payload.get("docs", []):
+        if not isinstance(item, dict) or not isinstance(item.get("cover_i"), int):
+            continue
+        cover_id = item["cover_i"]
+        urls.extend(
+            [
+                f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg?default=false",
+                f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg?default=false",
+            ]
+        )
+    return urls
+
+
+def cover_font(size: int, bold: bool = False):
+    candidates = [
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        Path("C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf"),
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                return ImageFont.truetype(str(path), size=size)
+            except OSError:
+                continue
+    return ImageFont.load_default()
+
+
+def create_fallback_cover(destination: Path, book: BookRecommendation) -> None:
+    digest = hashlib.sha256(f"{book.title}|{book.author}".encode("utf-8")).digest()
+    background = (24 + digest[0] // 4, 45 + digest[1] // 5, 55 + digest[2] // 5)
+    accent = (190 + digest[3] // 5, 135 + digest[4] // 4, 45 + digest[5] // 5)
+    image = PILImage.new("RGB", (600, 900), background)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((42, 42, 558, 858), outline=accent, width=7)
+    draw.rectangle((70, 94, 530, 108), fill=accent)
+    title_font = cover_font(55, bold=True)
+    author_font = cover_font(31)
+    label_font = cover_font(20, bold=True)
+    draw.text((74, 145), "MORNING MAGAZINE LIBRARY", font=label_font, fill=accent)
+    title_lines = textwrap.wrap(book.title, width=18)[:6] or [book.title]
+    y = 255
+    for line in title_lines:
+        draw.text((74, y), line, font=title_font, fill=(250, 247, 236))
+        y += 67
+    draw.line((74, 730, 250, 730), fill=accent, width=6)
+    for line in textwrap.wrap(book.author, width=26)[:2]:
+        draw.text((74, 765), line, font=author_font, fill=(250, 247, 236))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    image.save(destination, format="JPEG", quality=90, optimize=True)
+
+
+def cache_book_cover(output_dir: Path, book: BookRecommendation) -> str:
+    relative_path = Path("assets") / "book-covers" / f"{slugify(book.title + '-' + book.author)}.jpg"
+    destination = output_dir / relative_path
+    if destination.exists() and destination.stat().st_size > 1_000:
+        return relative_path.as_posix()
+
+    candidates: list[str] = []
+    current_url = book.cover_url.strip()
+    if current_url:
+        if current_url.startswith(("http://", "https://")):
+            candidates.append(current_url.replace("http://", "https://", 1))
+        else:
+            candidates.append(f"{PUBLISHED_SITE_URL}/{current_url.lstrip('/')}")
+    seen_urls: set[str] = set()
+    for source_group in (candidates, open_library_cover_urls(book)):
+        for url in source_group:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            try:
+                data = fetch_url(url, timeout=8)
+            except (urllib.error.URLError, TimeoutError, OSError):
+                continue
+            if save_cover_image(data, destination):
+                return relative_path.as_posix()
+
+    create_fallback_cover(destination, book)
+    return relative_path.as_posix()
+
+
 def write_book_catalog(
     output_dir: Path,
     generated_at: datetime,
@@ -2446,6 +2559,8 @@ def write_book_catalog(
     unique_books: dict[str, BookRecommendation] = {}
     for book in known_books:
         unique_books.setdefault(book_key(book.title), book)
+    for book in unique_books.values():
+        book.cover_url = cache_book_cover(output_dir, book)
     books = [asdict(book) for book in unique_books.values()]
     payload = {
         "title": "Book Library",
@@ -3517,18 +3632,8 @@ def slugify(value: str) -> str:
 
 
 def local_book_cover(output_dir: Path, book: BookRecommendation) -> Path | None:
-    if not book.cover_url:
-        return None
-    cover_dir = output_dir / "assets" / "book-covers"
-    cover_dir.mkdir(parents=True, exist_ok=True)
-    cover_path = cover_dir / f"{slugify(book.title + '-' + book.author)}.jpg"
-    if not cover_path.exists():
-        try:
-            data = fetch_url(book.cover_url, timeout=12)
-            if len(data) > 800:
-                cover_path.write_bytes(data)
-        except (urllib.error.URLError, TimeoutError, OSError):
-            return None
+    relative_path = cache_book_cover(output_dir, book)
+    cover_path = output_dir / relative_path
     return cover_path if cover_path.exists() else None
 
 
@@ -3816,6 +3921,8 @@ def main() -> None:
     )
     articles = limit_news_articles(articles)
     books = select_book_recommendations(run_date, output_dir, count=args.book_count)
+    for book in books:
+        book.cover_url = cache_book_cover(output_dir, book)
     daily_highlights = build_daily_highlights(articles)
     save_for_later = select_save_for_later(articles)
     weekly_summary = build_weekly_summary(run_date, articles)

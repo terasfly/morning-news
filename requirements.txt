@@ -1,3 +1,4 @@
 reportlab>=4.0,<5
+Pillow>=10,<13
 trafilatura>=1.12,<2
 deep-translator>=1.11,<2

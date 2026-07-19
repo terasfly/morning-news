@@ -1146,7 +1146,7 @@ function BookRecommendations({ books }) {
       <div className="book-list">
         {books.slice(0, 3).map((book) => (
           <article className="book-card" key={`${book.title}-${book.author}`}>
-            {book.cover_url && <img className="book-cover" src={book.cover_url} alt={`${book.title} cover`} loading="lazy" />}
+            <BookCover book={book} />
             <div className="book-details">
             <div className="article-meta">
               <span>
@@ -1180,6 +1180,34 @@ function BookRecommendations({ books }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function BookCover({ book }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [book.cover_url]);
+
+  if (!book.cover_url || failed) {
+    return (
+      <div className="book-cover book-cover-placeholder" role="img" aria-label={`${book.title}, ${book.author}`}>
+        <BookOpen size={24} />
+        <strong>{book.title}</strong>
+        <small>{book.author}</small>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      className="book-cover"
+      src={book.cover_url}
+      alt={`${book.title} cover`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -1259,7 +1287,7 @@ function BooksLibrary({ books, loading }) {
           <section className="library-grid">
             {filteredBooks.map((book) => (
               <article className="book-card" key={`${book.title}-${book.author}`}>
-                {book.cover_url && <img className="book-cover" src={book.cover_url} alt={`${book.title} cover`} loading="lazy" />}
+                <BookCover book={book} />
                 <div className="book-details">
                   <div className="article-meta">
                     <span><BookOpen size={15} />{book.book_type || "Fiction"}</span>
