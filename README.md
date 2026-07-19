@@ -2,7 +2,7 @@
 
 Personal daily Morning Magazine in English. It reads only overnight-fresh source articles about brain research, longevity, AI and ChatGPT, plus fresh-only GTA 6 and Northern Ireland trout/Woodburn stocking signals. WHOOP appears only when a newly published study, trial, cohort, experiment, or validation item explicitly uses WHOOP; old WHOOP material is never inserted as filler. The generator also checks each morning for kitchen, bakery and food-production vacancies that explicitly match Knotts Bakery and Forestside, Belfast. It writes concise English summaries with a complete Lithuanian translation under the heading `Lietuviškai`. Weak, stale, or mismatched topics are skipped.
 
-The final section recommends 1-3 books in the atmosphere of `Shantaram` and `The Great Alone`: immersive nature, adventure, survival, strong relationships and emotional journeys.
+The final section recommends exactly 3 new, non-repeating books each day in the atmosphere of `Shantaram` and `The Great Alone`: immersive nature, adventure, survival, strong relationships and emotional journeys. `public/books.json` is an accumulating catalog: it preserves every previously found book and adds that day's three discoveries instead of replacing the library.
 
 ## Open the magazine
 

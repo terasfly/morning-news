@@ -710,7 +710,7 @@ function App() {
             <span className="main-action-icon"><BookOpen size={26} /></span>
             <span>
               <strong>VISOS KNYGOS</strong>
-              <small>{bookCatalog.length || 32} skirtingos knygos su visais aprašymais</small>
+              <small>{bookCatalog.length ? `${bookCatalog.length} skirtingos knygos su visais aprašymais` : "Kraunamas visas knygų katalogas"}</small>
             </span>
             <ChevronRight size={24} />
           </a>
@@ -1183,16 +1183,32 @@ function BookRecommendations({ books }) {
   );
 }
 
+function normalizeBookSearch(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("lt")
+    .trim();
+}
+
 function BooksLibrary({ books, loading }) {
   const [query, setQuery] = useState("");
-  const search = query.trim().toLowerCase();
+  const search = normalizeBookSearch(query);
   const uniqueBooks = [...new Map(books.map((book) => [`${book.title}|${book.author}`.toLowerCase(), book])).values()];
   const filteredBooks = uniqueBooks.filter((book) => {
     if (!search) return true;
-    return [book.title, book.author, book.book_type, book.description_en, book.summary_lt]
+    return normalizeBookSearch([
+      book.title,
+      book.author,
+      book.book_type,
+      book.description_en,
+      book.summary_en,
+      book.summary_lt,
+      book.why_it_may_appeal,
+      book.length
+    ]
       .filter(Boolean)
-      .join(" ")
-      .toLowerCase()
+      .join(" "))
       .includes(search);
   });
 
