@@ -2444,11 +2444,11 @@ def open_library_cover_urls(book: BookRecommendation) -> list[str]:
         {
             "q": f'title:"{book.title}" author:"{book.author}"',
             "fields": "title,author_name,cover_i",
-            "limit": 8,
+            "limit": 4,
         }
     )
     try:
-        payload = json.loads(fetch_url(f"https://openlibrary.org/search.json?{query}", timeout=12).decode("utf-8"))
+        payload = json.loads(fetch_url(f"https://openlibrary.org/search.json?{query}", timeout=5).decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, OSError):
         return []
     urls: list[str] = []
@@ -2517,13 +2517,13 @@ def cache_book_cover(output_dir: Path, book: BookRecommendation) -> str:
         else:
             candidates.append(f"{PUBLISHED_SITE_URL}/{current_url.lstrip('/')}")
     seen_urls: set[str] = set()
-    for source_group in (candidates, open_library_cover_urls(book)):
+    for source_group in (candidates, open_library_cover_urls(book)[:4]):
         for url in source_group:
             if url in seen_urls:
                 continue
             seen_urls.add(url)
             try:
-                data = fetch_url(url, timeout=8)
+                data = fetch_url(url, timeout=4)
             except (urllib.error.URLError, TimeoutError, OSError):
                 continue
             if save_cover_image(data, destination):
